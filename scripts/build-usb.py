@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
+import stat
 from build import ROOT, render
 
 p = argparse.ArgumentParser(description=__doc__)
@@ -27,6 +28,9 @@ with tempfile.TemporaryDirectory() as temp:
     # These paths are from Debian amd64 netinst, not live or DVD images.
     for source, name in [('/isolinux/txt.cfg', 'txt.cfg'), ('/boot/grub/grub.cfg', 'grub.cfg')]:
         run('-osirrox', 'on', '-indev', a.iso, '-extract', source, temp / name)
+        # Debian ISO menu files are read-only; extraction preserves their modes.
+        menu = temp / name
+        menu.chmod(menu.stat().st_mode | stat.S_IWUSR)
     args = 'auto=true priority=high interface=auto netcfg/disable_autoconfig=false netcfg/get_hostname=hamclock-install netcfg/get_domain=local preseed/file=/cdrom/preseed.cfg'
     with (temp / 'txt.cfg').open('a') as f:
         f.write('\nlabel hamclock\n  menu label HamClock Debian 13 (interactive disks)\n  kernel /install.amd/vmlinuz\n  append initrd=/install.amd/initrd.gz ' + args + ' ---\n')
