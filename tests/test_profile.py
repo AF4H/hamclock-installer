@@ -28,6 +28,9 @@ class ProfileTests(unittest.TestCase):
         desktop_payload = seed.split('printf %s ')[4].split(' |')[0]
         self.assertEqual(base64.b64decode(desktop_payload), (ROOT / 'scripts/configure-desktop.sh').read_bytes())
         subprocess.run(['sh', '-n'], input=base64.b64decode(desktop_payload), check=True)
+        mdns_payload = seed.split('printf %s ')[5].split(' |')[0]
+        self.assertEqual(base64.b64decode(mdns_payload), (ROOT / 'scripts/install-mdns.sh').read_bytes())
+        subprocess.run(['sh', '-n'], input=base64.b64decode(mdns_payload), check=True)
         self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
         self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
 

@@ -16,6 +16,10 @@ connection:
    machine connects. The saved connection is used after reboot. An unavailable
    saved network causes Comitup to offer setup again.
 
+After connection, use the machine's `hamclock-xxxxx.local` name for SSH or
+`http://hamclock-xxxxx.local:8081/live.html` for browser control. See
+[local-network discovery](mdns.md) for details and existing-image support.
+
 HamClock keeps running during setup. Its Internet features need working upstream
 networking. Ethernet DHCP remains usable, including on machines without Wi-Fi.
 The hotspot password is independent of the Linux account password: change it in

@@ -13,6 +13,8 @@ validation of this new stage.
 - DHCP on the interface selected by Debian Installer (wired networking recommended).
 - `hamclock` user, initial password `h@mradio`, password-based sudo, locked root login.
 - OpenSSH server with password authentication, root SSH login disabled.
+- mDNS hostname and SSH/HamClock service discovery via Avahi; see
+  [local-network access](docs/mdns.md).
 - XFCE with LightDM graphical autologin as `hamclock`.
 - Always-on desktop: automatic sleep, screen blanking and locking disabled on AC
   and battery; see [existing-install update and validation](docs/always-on.md).
