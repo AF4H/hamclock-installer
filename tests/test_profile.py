@@ -25,6 +25,9 @@ class ProfileTests(unittest.TestCase):
         wifi_payload = seed.split('printf %s ')[3].split(' |')[0]
         self.assertEqual(base64.b64decode(wifi_payload), (ROOT / 'scripts/install-wifi.sh').read_bytes())
         subprocess.run(['sh', '-n'], input=base64.b64decode(wifi_payload), check=True)
+        desktop_payload = seed.split('printf %s ')[4].split(' |')[0]
+        self.assertEqual(base64.b64decode(desktop_payload), (ROOT / 'scripts/configure-desktop.sh').read_bytes())
+        subprocess.run(['sh', '-n'], input=base64.b64decode(desktop_payload), check=True)
         self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
         self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
 

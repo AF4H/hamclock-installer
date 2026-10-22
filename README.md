@@ -14,6 +14,8 @@ validation of this new stage.
 - `hamclock` user, initial password `h@mradio`, password-based sudo, locked root login.
 - OpenSSH server with password authentication, root SSH login disabled.
 - XFCE with LightDM graphical autologin as `hamclock`.
+- Always-on desktop: automatic sleep, screen blanking and locking disabled on AC
+  and battery; see [existing-install update and validation](docs/always-on.md).
 - Checksum-pinned HamClock 4.27 X11 build (800×480), started fullscreen by a user
   service at XFCE login, with restart on failure. Callsign/location setup remains
   interactive on first launch.
