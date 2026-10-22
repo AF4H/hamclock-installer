@@ -1,0 +1,10 @@
+#!ipxe
+# Replace base with your trusted deployment server. Serve generated preseed.cfg there.
+set base http://192.0.2.1/hamclock
+set debian https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/debian-installer/amd64
+# Require an explicit operator start; no unattended timeout.
+echo HamClock Debian 13 installer - disk selection and erase confirmation follow.
+prompt Press a key to start, or Ctrl-B for the iPXE shell.
+kernel ${debian}/linux initrd=initrd.gz auto=true priority=high interface=auto netcfg/disable_autoconfig=false netcfg/get_hostname=hamclock-install netcfg/get_domain=local preseed/url=${base}/preseed.cfg
+initrd ${debian}/initrd.gz
+boot
