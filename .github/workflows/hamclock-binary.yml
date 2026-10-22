@@ -1,0 +1,43 @@
+name: Build HamClock binary
+on:
+  push:
+    branches: [installer/debian13-amd64, main]
+    paths:
+      - scripts/build-hamclock.sh
+      - .github/workflows/hamclock-binary.yml
+permissions:
+  contents: read
+jobs:
+  binary:
+    runs-on: ubuntu-latest
+    container: debian:13-slim
+    permissions:
+      contents: write
+    steps:
+      - name: Install build dependencies
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl unzip python3 build-essential pkg-config libx11-dev libxau-dev libxdmcp-dev libxcb1-dev binutils
+      - uses: actions/checkout@v4
+      - name: Build unprivileged and verify static ELF
+        run: |
+          useradd --create-home builder
+          chown -R builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- sh scripts/build-hamclock.sh "$GITHUB_WORKSPACE/build/binary"
+      - name: Publish immutable prerelease assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const tag = `hamclock-bin-${context.sha}`;
+            const release = await github.rest.repos.createRelease({
+              ...context.repo, tag_name: tag, target_commitish: context.sha,
+              name: `HamClock 4.27 amd64 (${context.sha.slice(0, 12)})`,
+              prerelease: true,
+              body: 'Debian 13 amd64 X11 static build with the monotonic-clock patch. Build information and license are included. Installer runtime validation is recorded separately in the PR; publication alone is not hardware validation.'
+            });
+            for (const name of ['hamclock-4.27-debian13-amd64-static.tar.gz', 'SHA256SUMS']) {
+              await github.rest.repos.uploadReleaseAsset({
+                ...context.repo, release_id: release.data.id, name,
+                data: fs.readFileSync(path.join('build/binary', name))
+              });
+            }
