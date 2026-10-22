@@ -130,3 +130,27 @@ cutoff is decimal 4 GB. Regression coverage checks the exact lower boundary, an
 
 Source inspected: [Debian netcfg 1.197 source archive](https://deb.debian.org/debian/pool/main/n/netcfg/netcfg_1.197.tar.xz),
 `wireless.c`, `netcfg_wireless_show_essids` and `netcfg_wireless_set_essid`.
+
+The rebuilt `hamclock-debian13-amd64-small-disk.iso` has SHA256
+`523b7a0e826427ac6c48e71b8a549af0d4832fd3f07a81f0e1ad612bdbf1fe90`.
+Its extracted preseed matched the current generator output. A fresh disposable
+UEFI guest with exactly 4,000,000,000 bytes of target storage completed partitioning,
+all six setup stages and automatic reboot. SSH password login and sudo passed;
+SSH, LightDM, NetworkManager and Avahi were active. The final layout was:
+
+- EFI: 254,803,968 bytes.
+- Root partition: 3,486,515,200 bytes. The mounted ext4 filesystem reported
+  1,907,449,856 bytes used and 1,254,158,336 bytes available.
+- Swap: 256,901,120 bytes.
+
+XFCE, Xorg, D-Bus and Comitup were installed; the office suite was absent. The
+failsafe-session error still reproduced, so this does not establish successful
+HamClock graphical startup. BIOS recipe selection was fixture-tested; this new
+small-disk recipe's full installation test was UEFI only.
+
+Inside the actual Debian Installer, resetting the Wi-Fi scan question to unseen
+and issuing `INPUT high netcfg/wireless_show_essids` returned skipped at critical
+priority. The selected answer was `manual`; both ESSID answers were `AF4H`. The
+critical erase confirmation remained visible with No selected before explicit
+approval. This checks the real frontend behavior behind the selection fix; no
+physical radio authentication or firmware compatibility is claimed.
