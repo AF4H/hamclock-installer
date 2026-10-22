@@ -10,5 +10,5 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y debconf shellcheck
       - run: python3 scripts/build.py
       - run: python3 -m unittest discover -s tests -v
-      - run: shellcheck scripts/configure-target.sh
+      - run: shellcheck scripts/*.sh
       - run: python3 -m py_compile scripts/build.py scripts/build-usb.py

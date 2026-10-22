@@ -18,6 +18,9 @@ class ProfileTests(unittest.TestCase):
         self.assertFalse(re.search(r'^\S+ (?:partman[^ ]*|grub-installer/bootdev) ', seed, re.M))
         payload = seed.split('printf %s ')[1].split(' |')[0]
         self.assertEqual(base64.b64decode(payload), (ROOT / 'scripts/configure-target.sh').read_bytes())
+        installer_payload = seed.split('printf %s ')[2].split(' |')[0]
+        self.assertEqual(base64.b64decode(installer_payload), (ROOT / 'scripts/install-hamclock.sh').read_bytes())
+        subprocess.run(['sh', '-n'], input=base64.b64decode(installer_payload), check=True)
         subprocess.run(['sh', '-n'], input=base64.b64decode(payload), check=True)
         self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
         self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())

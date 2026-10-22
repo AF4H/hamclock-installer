@@ -4,7 +4,9 @@ Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
 a BIOS installation and reboot have passed in a disposable nested-KVM VM.
 See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
 tests. The user also reports a successful physical UEFI installation, including
-autologin and networking. HamClock itself and Comitup are deferred.
+autologin and networking. The installer now also builds and starts HamClock; Comitup remains deferred.
+See [HamClock installation and startup](docs/hamclock-integration.md) for scope and
+validation of this new stage.
 
 ## Installed base
 
@@ -12,6 +14,9 @@ autologin and networking. HamClock itself and Comitup are deferred.
 - `hamclock` user, initial password `h@mradio`, password-based sudo, locked root login.
 - OpenSSH server with password authentication, root SSH login disabled.
 - XFCE with LightDM graphical autologin as `hamclock`.
+- Checksum-pinned HamClock 4.27 X11 build (800×480), started fullscreen by a user
+  service at XFCE login, with restart on failure. Callsign/location setup remains
+  interactive on first launch.
 - Persistent `hamclock-xxxxx` hostname, five random hexadecimal characters generated
   during target configuration. It is saved under `/var/lib/hamclock-installer/hostname`
   and reused if configuration is retried. This is not a globally unique identifier;
@@ -88,7 +93,8 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, absence of partition/bootloader selections,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-ShellCheck and all three fixture tests pass in GitHub CI. The USB builder regression
+The base profile passed GitHub CI. Four local tests and ShellCheck cover the
+extended profile, including first-session service startup. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
 DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
 and hostname persistence across reboot. The second virtual disk remained unchanged.
@@ -114,9 +120,10 @@ Before recommending deployment, complete the remaining acceptance matrix for
 
 ## Next integrations
 
-Keep base OS configuration shared across iPXE and USB. Add a versioned, idempotent
-HamClock kiosk stage only after the base acceptance tests pass; decide executable,
-display settings and recovery behavior then. Add Comitup in a separate stage with
+Base OS and HamClock configuration are shared across iPXE and USB. The HamClock
+stage is implemented with pinned source, repeatable installation and a supervised
+fullscreen launch; its separate test report distinguishes guest-upgrade checks from
+a fresh installer run. Add Comitup in a separate stage with
 explicit ownership of network interfaces (avoid competing DHCP/network managers),
 Wi-Fi hardware/firmware tests and recovery-access tests. Neither integration should
 bypass disk confirmations or regenerate the installed host identity.

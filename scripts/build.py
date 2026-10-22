@@ -7,10 +7,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def render():
     payload = base64.b64encode((ROOT / 'scripts/configure-target.sh').read_bytes()).decode()
+    install_payload = base64.b64encode((ROOT / 'scripts/install-hamclock.sh').read_bytes()).decode()
     return (ROOT / 'preseed/base.cfg').read_text() + (
         "d-i preseed/late_command string in-target /bin/sh -c '"
         f"printf %s {payload} | base64 -d > /tmp/hamclock-configure.sh && "
-        "/bin/sh /tmp/hamclock-configure.sh && rm /tmp/hamclock-configure.sh'\n"
+        "/bin/sh /tmp/hamclock-configure.sh && "
+        f"printf %s {install_payload} | base64 -d > /tmp/hamclock-install.sh && "
+        "/bin/sh /tmp/hamclock-install.sh && "
+        "rm /tmp/hamclock-configure.sh /tmp/hamclock-install.sh'\n"
     )
 
 if __name__ == '__main__':
