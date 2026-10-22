@@ -13,6 +13,8 @@ be treated as a successful HamClock installation.
 - Observed source version: **4.27** (not a claim that this is the latest release).
 - Pinned SHA256: `b751226742033ad88fa900980af079ae99e01eb1c37cbbf6a6c3c91af7655deb`.
 - Build target: `hamclock-800x480`, the conservative display-size default.
+- Local patch/build ID: `4.27-x11-800x480-monotonic-v1`. The verified source is
+  patched before compilation so elapsed timers use `CLOCK_MONOTONIC`.
 - Launch: `/usr/local/bin/hamclock -b hamclock.com:80 -f on -d "$HOME/.hamclock"`.
 - Backend and X11 build guidance: [maintainer build guide](https://hamclock.com/byo.html).
 
@@ -42,13 +44,14 @@ HamClock's own in-app update path is not part of the tested installation workflo
   to five starts in two minutes. An intentional normal exit leaves the desktop usable.
 - `/home/hamclock/.config/autostart/hamclock.desktop`: XFCE session entry.
 - `/usr/local/share/doc/hamclock/LICENSE` and `/usr/local/share/man/man1/hamclock.1`.
-- `/var/lib/hamclock-installer/hamclock-source.sha256` and `hamclock-profile`: success
+- `/var/lib/hamclock-installer/hamclock-source.sha256` , `hamclock-build-id` and `hamclock-profile`: success
   markers. These are separate from the base-OS profile marker.
 
 No root graphical service or hard-coded display number is used. A systemd user
 service starts only once even if the desktop launcher is invoked again. On an
 upgrade, a matching source marker and existing executable avoid rebuilding;
-replacement builds are installed through a temporary binary and rename. Concurrent
+the patch build ID also participates in cache validation. Replacement builds are
+installed through a temporary binary and rename. Concurrent
 installs are rejected with a lock. Build dependencies remain installed.
 
 The X blanking commands do not replace every XFCE power-management setting;
@@ -90,8 +93,8 @@ Tested in a disposable QCOW2 overlay of the previously validated Debian 13 amd64
 XFCE guest (nested KVM, two vCPUs, 4096 MiB RAM). The base disk was not modified.
 The script installed missing build dependencies, verified the source pin, compiled
 and installed HamClock, and `hamclock -v` returned 4.27. A repeat install preserved
-the compiled binary SHA256:
-`19edef2d141772d44e40adb76393f3e3546edb8c53191db4dedba3fee8d5773e`.
+the compiled binary checksum. The final build also records the local patch ID,
+so a cached unpatched executable cannot bypass the timer fix.
 
 The first startup test exposed a `reset-failed` call on a unit not loaded yet.
 The launcher now resets state only when `is-failed` succeeds; a regression test
@@ -107,6 +110,18 @@ A forced SIGKILL was followed by a new application PID and `NRestarts=1` while t
 service returned to active. The local `get_sys.txt` endpoint then reported version
 4.27, 800×480 and backend `hamclock.com:80`. A bad-source fixture was rejected with
 an explicit checksum error and left the installed executable unchanged.
+
+A further reboot reproduced an upstream timer defect: `millis()` used
+`gettimeofday()`, and a boot-time wall-clock correction produced `dt = -373` inside
+`wdDelay(100)`. Conversion to an unsigned sleep argument stalled the Ready screen
+for an extended period. A debugger located the stalled delay. The installer now
+applies a small local patch to use thread-safe initialization and
+`CLOCK_MONOTONIC` for elapsed milliseconds, retaining 32-bit wraparound semantics.
+A compiled regression test checks monotonic time selection, subsecond-boundary
+arithmetic and wraparound. The patched build reached the full dashboard. Moving
+the guest wall clock backward by two seconds left the same process responsive
+to its status endpoint; guest NTP synchronization was restored after the test.
+This patch does not replace UTC/NTP timekeeping.
 
 This is a real application build and guest-upgrade/session test. A complete fresh
 Debian installation using the extended late command has not yet been rerun, and

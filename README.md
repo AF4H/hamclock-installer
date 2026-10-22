@@ -29,7 +29,8 @@ networks. The preseed contains the initial password and must be treated accordin
 
 ## Build and validate
 
-Requires Python 3.11+, POSIX shell and `debconf-set-selections` (Debian `debconf`).
+Local validation requires Python 3.11+, `g++` with C++17 support, a POSIX shell
+and `debconf-set-selections` (Debian `debconf`).
 
 ```sh
 python3 scripts/build.py
@@ -93,8 +94,8 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, absence of partition/bootloader selections,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Four local tests and ShellCheck cover the
-extended profile, including first-session service startup. The USB builder regression
+The base profile passed GitHub CI. Five local tests and ShellCheck cover the
+extended profile, including first-session service startup and a compiled elapsed-clock regression. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
 DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
 and hostname persistence across reboot. The second virtual disk remained unchanged.
