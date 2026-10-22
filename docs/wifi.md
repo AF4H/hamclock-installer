@@ -31,11 +31,13 @@ rerunning the installer preserves them and subsequent changes to Comitup's confi
 Copy `scripts/install-wifi.sh` to the machine, run `sudo sh install-wifi.sh`, and
 reboot. Internet access is required for package installation. This changes only
 the target system, not the computer used to build its USB image. Existing wired
-configuration is preserved. A conflicting legacy Wi-Fi configuration in
-`/etc/network/interfaces` or `interfaces.d` is rejected; migrate that Wi-Fi
-connection to NetworkManager before retrying. Custom interfaces sourced from other
-locations need manual review. XFCE installations normally already use
-NetworkManager and leave only loopback in `interfaces`.
+configuration is preserved. Debian Installer's normal DHCP Wi-Fi entry is migrated
+from `/etc/network/interfaces` or `interfaces.d` into a root-only NetworkManager
+profile, preserving the selected network and its WPA password or hashed key.
+The original is backed up privately before its Wi-Fi stanza is removed. Custom
+static, enterprise-authentication and external-supplicant configurations still need
+manual migration. No network service is restarted by the setup script; reboot to
+complete the handoff. See [handoff behavior and validation](wifi-handoff.md).
 
 Comitup uses the default dynamically discovered Wi-Fi device, without assuming a
 hardware interface name. If multiple adapters are installed, select the AP-capable

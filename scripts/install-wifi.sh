@@ -93,25 +93,151 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     network-manager comitup firmware-iwlwifi firmware-realtek firmware-atheros \
     firmware-brcm80211 firmware-mediatek firmware-libertas firmware-misc-nonfree
-# XFCE's NetworkManager owns Wi-Fi; preserve existing wired and saved connections.
-# Refuse a conflicting legacy Wi-Fi configuration rather than erase credentials
-# or interrupt a live SSH upgrade. Fresh XFCE installs normally have loopback only.
-python3 - <<'PY'
+# Preserve Debian Installer's DHCP Wi-Fi connection in a native NM keyfile.
+# Generate/validate all profiles before modifying legacy files; never restart
+# networking in the installer chroot or an active recovery session.
+python3 - "${HAMCLOCK_TEST_ROOT:-/}" <<'MIGRATE'
 from pathlib import Path
+import os
 import re
-paths = [Path('/etc/network/interfaces')]
-paths += list(Path('/etc/network/interfaces.d').glob('*'))
-wifi = {p.name for p in Path('/sys/class/net').iterdir() if (p / 'wireless').exists()}
+import stat
+import subprocess
+import sys
+import tempfile
+import uuid
+
+root = Path(sys.argv[1])
+paths = [root / 'etc/network/interfaces']
+paths += sorted((root / 'etc/network/interfaces.d').glob('*'))
+wifi = {p.name for p in (root / 'sys/class/net').glob('*') if (p / 'wireless').exists()}
+# Keep all edits in memory until every candidate connection is understood.
+plans = {}
+profiles = {}
+removed = set()
+header = re.compile(r'^\s*(?:iface|auto|allow-\S+|source|source-directory|mapping)\s')
 for path in paths:
     if not path.is_file():
         continue
-    text = '\n'.join(line.split('#', 1)[0] for line in path.read_text().splitlines())
-    interfaces = re.findall(r'^\s*iface\s+(\S+)', text, re.M)
-    if re.search(r'^\s*(?:wpa-|wireless-)', text, re.M) or any(
-        name in wifi or name.startswith(('wlan', 'wl')) for name in interfaces
-    ):
-        raise SystemExit(f'Move Wi-Fi configuration from {path} to NetworkManager before retrying')
-PY
+    lines = path.read_text().splitlines(keepends=True)
+    keep = [True] * len(lines)
+    i = 0
+    while i < len(lines):
+        match = re.match(r'^\s*iface\s+(\S+)\s+(\S+)\s+(\S+)\s*(?:#.*)?$', lines[i].rstrip('\r\n'))
+        if not match:
+            i += 1
+            continue
+        interface, family, method = match.groups()
+        end = i + 1
+        while end < len(lines) and not header.match(lines[end]):
+            end += 1
+        options = {}
+        duplicates = False
+        for line in lines[i + 1:end]:
+            if not line.strip() or line.lstrip().startswith('#'):
+                continue
+            fields = line.rstrip('\r\n').lstrip().split(None, 1)
+            key = fields[0]
+            if key in options:
+                duplicates = True
+            options[key] = fields[1] if len(fields) == 2 else ''
+        wireless = interface in wifi or interface.startswith('wl') or any(
+            key.startswith(('wpa-', 'wireless-')) for key in options)
+        if wireless:
+            if duplicates:
+                raise SystemExit(f'Duplicate Wi-Fi option in {path}; original retained')
+            allowed = {'wpa-ssid', 'wpa-psk', 'wpa-key-mgmt', 'wpa-scan-ssid'}
+            if (family, method) not in [('inet', 'dhcp'), ('inet6', 'auto')] or set(options) - allowed:
+                raise SystemExit(f'Unsupported Wi-Fi configuration for {interface} in {path}; original retained')
+            entry = profiles.setdefault(interface, {})
+            if family in entry:
+                raise SystemExit(f'Duplicate Wi-Fi stanza for {interface}; originals retained')
+            entry[family] = options
+            removed.add(interface)
+            for index in range(i, end):
+                # Retain comments/spacing, removing only the stanza and its options.
+                if lines[index].strip() and not lines[index].lstrip().startswith('#'):
+                    keep[index] = False
+        i = end
+    plans[path] = [line for index, line in enumerate(lines) if keep[index]]
+
+connections = root / 'etc/NetworkManager/system-connections'
+generated = {}
+for interface, families in profiles.items():
+    options = families.get('inet')
+    if options is None or not options.get('wpa-ssid') or families.get('inet6', {}):
+        raise SystemExit(f'Incomplete Wi-Fi configuration for {interface}; originals retained')
+    ssid = options['wpa-ssid']
+    psk = options.get('wpa-psk')
+    key_mgmt = options.get('wpa-key-mgmt', 'WPA-PSK' if psk else 'NONE')
+    if key_mgmt not in ('WPA-PSK', 'NONE') or (key_mgmt == 'WPA-PSK') != bool(psk):
+        raise SystemExit(f'Unsupported Wi-Fi authentication for {interface}; originals retained')
+    if options.get('wpa-scan-ssid', '0') not in ('0', '1'):
+        raise SystemExit(f'Unsupported Wi-Fi scan setting for {interface}; originals retained')
+    identity = str(uuid.uuid5(uuid.NAMESPACE_DNS, 'hamclock-installer:' + interface + ':' + ssid))
+    destination = connections / f'hamclock-installer-{identity}.nmconnection'
+    command = ['nmcli', '--offline', 'connection', 'add', 'type', 'wifi',
+               'con-name', 'HamClock installer Wi-Fi', 'connection.uuid', identity,
+               'connection.autoconnect', 'yes', 'connection.autoconnect-priority', '-10',
+               'ssid', ssid, 'wifi.mode', 'infrastructure', 'ipv4.method', 'auto', 'ipv6.method', 'auto']
+    if options.get('wpa-scan-ssid') == '1':
+        command += ['wifi.hidden', 'yes']
+    if psk:
+        command += ['wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', psk]
+    # Offline generation works without a running system bus and correctly escapes
+    # SSID/password characters. Never include its command or stderr in logs.
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode:
+        raise SystemExit(f'NetworkManager rejected Wi-Fi profile for {interface}; originals retained')
+    if destination.exists() and destination.read_text() != result.stdout:
+        raise SystemExit(f'Existing migrated profile for {interface} was customized; originals retained')
+    generated[destination] = result.stdout
+
+# Remove migrated names from auto/allow-hotplug lines, including mixed wired lists.
+for path, lines in plans.items():
+    updated = []
+    for line in lines:
+        match = re.match(r'^(\s*(?:auto|allow-\S+))\s+([^#\n]*)(.*)$', line.rstrip('\r\n'))
+        if match and removed.intersection(match[2].split()):
+            names = [name for name in match[2].split() if name not in removed]
+            if names:
+                updated.append(match[1] + ' ' + ' '.join(names) + (' ' + match[3] if match[3] else '') + '\n')
+            elif match[3]:
+                updated.append(match[3] + '\n')
+        else:
+            updated.append(line)
+    plans[path] = ''.join(updated)
+
+def atomic_write(path, data, mode):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix='.hamclock-', dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            os.fchmod(stream.fileno(), mode)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+if profiles:
+    backup = root / 'var/lib/hamclock-installer/network-backup'
+    backup.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup.chmod(0o700)
+    connections.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Write usable, root-only profiles before removing legacy credentials.
+    for path, text in generated.items():
+        atomic_write(path, text, 0o600)
+    for path, text in plans.items():
+        original = path.read_text()
+        if text != original:
+            saved = backup / path.relative_to(root)
+            if not saved.exists():
+                atomic_write(saved, original, 0o600)
+            atomic_write(path, text, stat.S_IMODE(path.stat().st_mode))
+    print(f'Migrated {len(profiles)} installer Wi-Fi connection(s) to NetworkManager; reboot to activate')
+MIGRATE
 mkdir -p /etc/systemd/system/comitup.service.d
 # Keep an Ethernet-only machine healthy. Reboot after adding a Wi-Fi adapter,
 # or start Comitup manually once NetworkManager sees the new device.
