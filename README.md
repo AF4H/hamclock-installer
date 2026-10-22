@@ -3,7 +3,8 @@
 Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
 a BIOS installation and reboot have passed in a disposable nested-KVM VM.
 See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
-tests. Physical hardware has not been tested. HamClock itself and Comitup are deferred.
+tests. The user also reports a successful physical UEFI installation, including
+autologin and networking. HamClock itself and Comitup are deferred.
 
 ## Installed base
 
@@ -92,7 +93,9 @@ test covers read-only extracted menu files. A real BIOS VM installation also pas
 DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
 and hostname persistence across reboot. The second virtual disk remained unchanged.
 See [the test report](docs/vm-test-2026-10-21.md) for runtime evidence; fixture service
-commands remain mocks. UEFI coverage is menu boot only.
+commands remain mocks. Agent-observed UEFI coverage is menu boot only; the user
+subsequently confirmed successful UEFI installation, autologin and networking on
+physical hardware. Hardware model and Secure Boot state were not supplied.
 
 Before recommending deployment, complete the remaining acceptance matrix for
 **both transports**; the initial BIOS ISO result covers only part of it:
