@@ -33,9 +33,9 @@ jobs:
               ...context.repo, tag_name: tag, target_commitish: context.sha,
               name: `HamClock 4.27 amd64 (${context.sha.slice(0, 12)})`,
               prerelease: true,
-              body: 'Debian 13 amd64 X11 static build with the monotonic-clock patch. Build information and license are included. Installer runtime validation is recorded separately in the PR; publication alone is not hardware validation.'
+              body: 'Debian 13 amd64 X11 static build with the monotonic-clock patch. Build information and license are included; matching source and the patch/build script are attached. Installer runtime validation is recorded separately in the PR; publication alone is not hardware validation.'
             });
-            for (const name of ['hamclock-4.27-debian13-amd64-static.tar.gz', 'SHA256SUMS']) {
+            for (const name of ['hamclock-4.27-debian13-amd64-static.tar.gz', 'hamclock-source-4.27.zip', 'build-hamclock.sh', 'SHA256SUMS']) {
               await github.rest.repos.uploadReleaseAsset({
                 ...context.repo, release_id: release.data.id, name,
                 data: fs.readFileSync(path.join('build/binary', name))

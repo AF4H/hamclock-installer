@@ -8,9 +8,15 @@ output=$(realpath "$output")
 build=$(mktemp -d)
 trap 'rm -rf "$build"' EXIT HUP INT TERM
 source_sha=b751226742033ad88fa900980af079ae99e01eb1c37cbbf6a6c3c91af7655deb
-curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 \
-    --connect-timeout 20 --max-time 300 https://hamclock.com/ham/HamClock/ESPHamClock.zip -o "$build/source.zip"
+if [ -n "${HAMCLOCK_SOURCE_ARCHIVE:-}" ]; then
+    cp "$HAMCLOCK_SOURCE_ARCHIVE" "$build/source.zip"
+else
+    curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 \
+        --connect-timeout 20 --max-time 300 https://hamclock.com/ham/HamClock/ESPHamClock.zip -o "$build/source.zip"
+fi
 printf '%s  %s\n' "$source_sha" "$build/source.zip" | sha256sum --check --status
+cp "$build/source.zip" "$output/hamclock-source-4.27.zip"
+cp "$0" "$output/build-hamclock.sh"
 unzip -q "$build/source.zip" -d "$build"
 python3 - "$build/ESPHamClock/ArduinoLib/Arduino.cpp" <<'MONOTONIC'
 from pathlib import Path
@@ -61,5 +67,5 @@ install -m 644 "$build/ESPHamClock/hamclock.1" "$package/hamclock.1"
 archive=hamclock-4.27-debian13-amd64-static.tar.gz
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
     -C "$package" -czf "$output/$archive" hamclock-800x480 LICENSE hamclock.1 BUILD-INFO.txt
-(cd "$output" && sha256sum "$archive" > SHA256SUMS)
+(cd "$output" && sha256sum "$archive" hamclock-source-4.27.zip build-hamclock.sh > SHA256SUMS)
 cat "$output/SHA256SUMS"
