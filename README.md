@@ -1,8 +1,9 @@
 # HamClock installer
 
 Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
-no VM or hardware installation has been completed yet. HamClock itself and
-Comitup are intentionally deferred.
+a BIOS installation and reboot have passed in a disposable nested-KVM VM.
+See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
+tests. Physical hardware has not been tested. HamClock itself and Comitup are deferred.
 
 ## Installed base
 
@@ -73,9 +74,9 @@ disk. Select **HamClock Debian 13 (interactive disks)** in the resulting boot me
 Write the resulting ISO using a trusted image writer, verifying the USB device's
 identity before erasing it. Remove installation media after installation.
 
-This workflow is implemented but the remastered ISO has not been built or booted
-in this environment. It requires the netinst menu/path layout expected by the
-builder; extraction fails for unsupported layouts. Internet access remains necessary
+The remastered Debian 13.7.0 ISO was built successfully and installed in a BIOS
+VM; a separate OVMF test reached its UEFI menu. It requires the netinst menu/path
+layout expected by the builder; extraction fails for unsupported layouts. Internet access remains necessary
 for package installation; this is not an offline installer. Remastering does not
 establish Secure Boot compatibility: test it explicitly, alongside legacy BIOS and
 UEFI without Secure Boot.
@@ -86,10 +87,15 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, absence of partition/bootloader selections,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-ShellCheck is configured in CI but unavailable locally. Neither xorriso nor QEMU
-is installed here. Service commands in fixture tests are mocks, not runtime tests.
+ShellCheck and all three fixture tests pass in GitHub CI. The USB builder regression
+test covers read-only extracted menu files. A real BIOS VM installation also passed
+DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
+and hostname persistence across reboot. The second virtual disk remained unchanged.
+See [the test report](docs/vm-test-2026-10-21.md) for runtime evidence; fixture service
+commands remain mocks. UEFI coverage is menu boot only.
 
-Before recommending deployment, test **both transports** in disposable VMs first:
+Before recommending deployment, complete the remaining acceptance matrix for
+**both transports**; the initial BIOS ISO result covers only part of it:
 
 1. BIOS and UEFI boot, DHCP and preseed retrieval, package availability on trixie.
 2. Two virtual disks: operator selects the intended disk, cancellation at final
