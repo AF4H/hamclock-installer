@@ -1,7 +1,7 @@
 # HamClock installer
 
-Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
-a BIOS installation and reboot have passed in a disposable nested-KVM VM.
+**Debian 13 (trixie), amd64** HamClock installer. Implementation for review;
+disposable nested-KVM tests cover the base profile and automatic installer.
 See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
 tests. The user also reports a successful physical UEFI installation, including
 autologin and networking. The installer now downloads and starts a prebuilt static HamClock binary; Comitup supplies a Wi-Fi setup hotspot when an AP-capable adapter is available.
@@ -113,9 +113,11 @@ test covers read-only extracted menu files. A real BIOS VM installation also pas
 DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
 and hostname persistence across reboot. The second virtual disk remained unchanged.
 See [the test report](docs/vm-test-2026-10-21.md) for runtime evidence; fixture service
-commands remain mocks. Agent-observed UEFI coverage is menu boot only; the user
-subsequently confirmed successful UEFI installation, autologin and networking on
-physical hardware. Hardware model and Secure Boot state were not supplied.
+commands remain mocks. Those BIOS results describe the earlier manual-disk profile.
+Current direct-boot, disk-consent, installer-SSH and UEFI automatic-install results
+are recorded in [automatic installation](docs/automatic-install.md). The user
+confirmed successful UEFI base installation, autologin and networking on physical
+hardware. Hardware model and Secure Boot state were not supplied.
 
 Before recommending deployment, complete the remaining acceptance matrix for
 **both transports**; the initial BIOS ISO result covers only part of it:

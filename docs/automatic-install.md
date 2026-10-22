@@ -65,3 +65,42 @@ not delay the desktop. NetworkManager and Comitup still start normally and manag
 connectivity. This is not a claim of a measured speed improvement on all hardware.
 The failsafe-session issue and physical Wi-Fi verification remain separately
 deferred; boot polish does not establish that those problems are resolved.
+
+## Disposable VM validation (2026-10-22)
+
+Image: `hamclock-debian13-amd64-automatic.iso`, SHA256
+`3fb5fedfc1c57f1167431538eff3f1a9bfb7491c0d944a664e52b0371eecd658`.
+Built from the verified Debian 13.7.0 amd64 netinst image; the extracted preseed
+matched `scripts/build.py` output byte for byte. Sixteen local tests, preseed
+syntax validation and ShellCheck passed.
+
+Nested KVM tests used disposable disks only:
+
+- BIOS and UEFI booted USB media directly, without an installation menu.
+- Two eligible internal disks stopped automatic selection. Installer SSH login
+  as `installer` with the supplied default password opened a root diagnostic shell.
+  Both 24 GiB disks compared byte-for-byte equal to the blank reference after
+  shutdown. This initial test preceded the additional fail-closed shutdown wrapper.
+- On the final image, declining the default-No erase consent powered off the UEFI
+  VM. Its target disk again compared equal to the blank reference.
+- A writable 32 GiB USB installer configured to report itself as non-removable
+  was excluded. The consent screen offered only the 24 GiB internal virtio disk.
+  Approval completed partitioning, package installation and all six late setup
+  stages without further input. The installer rebooted automatically. Installer
+  SSH remained usable during installation.
+- Installed SSH password login as `hamclock` and password sudo passed. SSH,
+  LightDM, NetworkManager and Avahi were active; the SSH daemon reported
+  `PermitRootLogin no` and `PasswordAuthentication yes`. Comitup was skipped
+  because this guest had no wireless adapter.
+- First installed UEFI boot displayed the graphical Debian 13 spinner. The
+  selected theme and initramfs contents confirmed `spinner`; generated GRUB
+  configuration used zero-second timeouts and the quiet/splash kernel options.
+  NetworkManager wait-online was disabled. No comparative speed measurement
+  is claimed.
+- LightDM attempted autologin, but the reported **Unable to load a failsafe
+  session** error reproduced. That separate issue remains unresolved; this is
+  an installation/SSH/boot-configuration pass, not a working desktop or HamClock
+  first-launch pass. The installed hostname was `hamclock-2ec7e`.
+
+These tests do not cover Secure Boot, physical firmware/radios, existing
+LVM/RAID layouts, or an iPXE installation.
