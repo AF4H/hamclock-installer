@@ -6,33 +6,43 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from build import render
+from build import render, repair_script, STAGES, target_command
 
 class ProfileTests(unittest.TestCase):
     def test_preseed_and_embedded_script(self):
         seed = render()
         subprocess.run(['debconf-set-selections', '--checkonly'], input=seed, text=True, check=True)
         self.assertFalse(re.search(r'^\S+ (?:partman[^ ]*|grub-installer/bootdev) ', seed, re.M))
-        payload = seed.split('printf %s ')[1].split(' |')[0]
-        self.assertEqual(base64.b64decode(payload), (ROOT / 'scripts/configure-target.sh').read_bytes())
-        installer_payload = seed.split('printf %s ')[2].split(' |')[0]
-        self.assertEqual(base64.b64decode(installer_payload), (ROOT / 'scripts/install-hamclock.sh').read_bytes())
-        subprocess.run(['sh', '-n'], input=base64.b64decode(installer_payload), check=True)
-        subprocess.run(['sh', '-n'], input=base64.b64decode(payload), check=True)
-        wifi_payload = seed.split('printf %s ')[3].split(' |')[0]
-        self.assertEqual(base64.b64decode(wifi_payload), (ROOT / 'scripts/install-wifi.sh').read_bytes())
-        subprocess.run(['sh', '-n'], input=base64.b64decode(wifi_payload), check=True)
-        desktop_payload = seed.split('printf %s ')[4].split(' |')[0]
-        self.assertEqual(base64.b64decode(desktop_payload), (ROOT / 'scripts/configure-desktop.sh').read_bytes())
-        subprocess.run(['sh', '-n'], input=base64.b64decode(desktop_payload), check=True)
-        mdns_payload = seed.split('printf %s ')[5].split(' |')[0]
-        self.assertEqual(base64.b64decode(mdns_payload), (ROOT / 'scripts/install-mdns.sh').read_bytes())
-        subprocess.run(['sh', '-n'], input=base64.b64decode(mdns_payload), check=True)
+        payloads = re.findall(r'printf %s ([A-Za-z0-9+/=]+) \| base64 -d', seed)
+        self.assertEqual(len(payloads), len(STAGES))
+        for encoded, (_, filename) in zip(payloads, STAGES):
+            payload = base64.b64decode(encoded)
+            self.assertEqual(payload, (ROOT / 'scripts' / filename).read_bytes())
+            subprocess.run(['sh', '-n'], input=payload, check=True)
+        subprocess.run(['sh', '-n'], input=repair_script(), text=True, check=True)
+        self.assertLess(seed.index('HamClock-stage=wifi'), seed.index('HamClock-stage=install'))
+        self.assertIn('apt-setup/disable-cdrom-entries boolean true', seed)
         self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
         self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
+
+    def test_stage_failure_keeps_status_and_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'scripts').mkdir()
+            (root / 'scripts/fail.sh').write_text('echo stage-diagnostic\nexit 23\n')
+            (root / 'scripts/after.sh').write_text('echo SHOULD_NOT_RUN\n')
+            with patch('build.ROOT', root), patch('build.STAGES', [('fail', 'fail.sh'), ('after', 'after.sh')]):
+                command = target_command().replace('/var/log', str(root / 'log')).replace('/tmp/hamclock-', str(root / 'stage-'))
+            result = subprocess.run(['sh', '-c', command], text=True, capture_output=True)
+            self.assertEqual(result.returncode, 23)
+            self.assertIn('stage-diagnostic', result.stdout)
+            log = (root / 'log/hamclock-installer.log').read_text()
+            self.assertIn('HamClock-stage=fail', log)
+            self.assertNotIn('SHOULD_NOT_RUN', log)
 
     def test_target_hostname_persists_and_services_configure(self):
         with tempfile.TemporaryDirectory() as tmp:

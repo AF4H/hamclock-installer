@@ -1,11 +1,11 @@
 # HamClock installation and startup
 
-The shared preseed runs `configure-target.sh`, then `install-hamclock.sh` inside
-the installed Debian target. Both script bodies are embedded in the generated
-preseed. The second stage fetches and verifies HamClock source, builds it as the
-unprivileged `hamclock` user with two compiler jobs, installs it, and configures
-startup at the next XFCE login. Build failures stop the late command and must not
-be treated as a successful HamClock installation.
+The shared preseed runs base configuration, Wi-Fi/APT setup, HamClock binary
+installation, desktop policy and mDNS setup inside the installed target. All
+scripts are embedded. HamClock is built once in CI as an unprivileged user in a
+Debian 13 container; target installation downloads a fixed release archive and
+verifies its pinned SHA256. It never builds from source. See
+[binary release, failure recovery and current validation](binary-install.md).
 
 ## Source and defaults
 
@@ -13,13 +13,14 @@ be treated as a successful HamClock installation.
 - Observed source version: **4.27** (not a claim that this is the latest release).
 - Pinned SHA256: `b751226742033ad88fa900980af079ae99e01eb1c37cbbf6a6c3c91af7655deb`.
 - Build target: `hamclock-800x480`, the conservative display-size default.
-- Local patch/build ID: `4.27-x11-800x480-monotonic-v1`. The verified source is
+- Local patch: `monotonic-v1`, also included in the static release build. The verified source is
   patched before compilation so elapsed timers use `CLOCK_MONOTONIC`.
 - Launch: `/usr/local/bin/hamclock -b hamclock.com:80 -f on -d "$HOME/.hamclock"`.
 - Backend and X11 build guidance: [maintainer build guide](https://hamclock.com/byo.html).
 
-The archive URL is mutable. If the publisher changes it, installation deliberately
-fails checksum verification until a reviewed source/hash update is committed.
+The upstream source URL is mutable. Source changes stop the CI binary build until
+a reviewed source/hash update is committed. Target installation uses a fixed
+GitHub release URL and a separate pinned archive checksum.
 HTTPS and the recorded hash protect transport and repeatability; the hash is our
 observed source pin, not an upstream detached signature. Upstream's MIT license
 is installed with the application. Backend availability and data correctness are
@@ -44,18 +45,18 @@ HamClock's own in-app update path is not part of the tested installation workflo
   to five starts in two minutes. An intentional normal exit leaves the desktop usable.
 - `/home/hamclock/.config/autostart/hamclock.desktop`: XFCE session entry.
 - `/usr/local/share/doc/hamclock/LICENSE` and `/usr/local/share/man/man1/hamclock.1`.
-- `/var/lib/hamclock-installer/hamclock-source.sha256` , `hamclock-build-id` and `hamclock-profile`: success
-  markers. These are separate from the base-OS profile marker.
+- `/var/lib/hamclock-installer/hamclock-archive.sha256`, `hamclock-binary.sha256`
+  and `hamclock-profile`: binary cache/integrity markers, separate from the base profile.
+- `/usr/local/share/doc/hamclock/BUILD-INFO.txt`: source pin, patch and build dependencies.
 
 No root graphical service or hard-coded display number is used. A systemd user
 service starts only once even if the desktop launcher is invoked again. On an
-upgrade, a matching source marker and existing executable avoid rebuilding;
-the patch build ID also participates in cache validation. Replacement builds are
-installed through a temporary binary and rename. Concurrent
-installs are rejected with a lock. Build dependencies remain installed.
-
-The X blanking commands do not replace every XFCE power-management setting;
-physical display sleep, locking and suspend still need a long-duration test.
+upgrade, the pinned archive marker and executable checksum allow a repeat install
+without downloading. Binary replacement uses a temporary executable and rename.
+Concurrent installs are rejected with a lock. Fresh installations do not request
+compiler packages or development headers for HamClock. Existing compiler packages
+are left alone. The always-on desktop policy separately disables locking and
+power management; see [desktop policy](always-on.md).
 
 ## Add HamClock to an existing base installation
 
@@ -67,11 +68,12 @@ sudo sh install-hamclock.sh
 sudo reboot
 ```
 
-It installs missing dependencies and builds HamClock. No disk repartitioning or
+It installs missing runtime dependencies and the verified binary. No disk repartitioning or
 OS reinstall is needed. For a fresh installation, rebuild/write the updated ISO
 and use the normal installer flow; the previous base-only ISO does not include
-this stage. Source and dependency downloads need internet access and the build
-adds several minutes to installation.
+this stage. The binary and runtime dependencies need Internet access.
+For an earlier failed installer, use the full recovery script in
+[binary-install.md](binary-install.md), which repairs the APT media entry first.
 
 From a terminal logged in as `hamclock`, use:
 
@@ -87,7 +89,11 @@ To disable future automatic starts, remove or rename
 again restores that autostart entry. App diagnostics/configuration live under
 `~/.hamclock`; retain those files when troubleshooting.
 
-## Validation
+## Earlier source-build validation
+
+The following records precede the switch to prebuilt binaries. Current binary
+validation is recorded in [binary-install.md](binary-install.md).
+
 
 Tested in a disposable QCOW2 overlay of the previously validated Debian 13 amd64
 XFCE guest (nested KVM, two vCPUs, 4096 MiB RAM). The base disk was not modified.

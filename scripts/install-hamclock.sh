@@ -1,16 +1,22 @@
 #!/bin/sh
-# Run as root inside the installed Debian target, after configure-target.sh.
+# Run as root inside the installed Debian 13 amd64 target.
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo 'Run as root' >&2; exit 1; }
-source_url=https://hamclock.com/ham/HamClock/ESPHamClock.zip
-source_sha=b751226742033ad88fa900980af079ae99e01eb1c37cbbf6a6c3c91af7655deb
-build_id=4.27-x11-800x480-monotonic-v1
+# shellcheck disable=SC1091
+. /etc/os-release
+if [ "$ID" != debian ] || [ "$VERSION_ID" != 13 ]; then
+    echo 'Debian 13 required' >&2; exit 1;
+fi
+[ "$(dpkg --print-architecture)" = amd64 ] || { echo 'Debian amd64 required' >&2; exit 1; }
+# Fixed release and checksum: never download a mutable "latest" binary.
+binary_url=https://github.com/AF4H/hamclock-installer/releases/download/hamclock-bin-1525bad751d441ba9b1ff252946351e2fc797759/hamclock-4.27-debian13-amd64-static.tar.gz
+binary_sha=149c5cab1c4620afda7e3ad2e7e94a8d656b97bc613c96f01450e6f9f316bc06
 state=/var/lib/hamclock-installer
 mkdir -p "$state" /usr/local/lib/hamclock /usr/local/share/doc/hamclock /usr/local/share/man/man1
 exec 9>"$state/hamclock-install.lock"
-flock -n 9 || { echo "Another HamClock installation is running" >&2; exit 1; }
-# Also supports upgrading an already installed base system.
-set -- build-essential libx11-dev curl ca-certificates unzip python3 x11-xserver-utils
+flock -n 9 || { echo 'Another HamClock installation is running' >&2; exit 1; }
+# No compiler, headers, source archive or Python needed for binary installation.
+set -- curl ca-certificates x11-xserver-utils
 missing=false
 for package do
     [ "$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)" = 'install ok installed' ] || missing=true
@@ -19,57 +25,31 @@ if [ "$missing" = true ]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
 fi
-# Reuse only the exact binary previously built from this pinned source.
-if [ ! -x /usr/local/lib/hamclock/hamclock-800x480 ] ||
-   [ "$(cat "$state/hamclock-source.sha256" 2>/dev/null || true)" != "$source_sha" ] ||
-   [ "$(cat "$state/hamclock-build-id" 2>/dev/null || true)" != "$build_id" ]; then
-    build=$(mktemp -d /var/tmp/hamclock-build.XXXXXX)
-    trap 'rm -rf "$build"' EXIT HUP INT TERM
+if [ "$(cat "$state/hamclock-archive.sha256" 2>/dev/null || true)" != "$binary_sha" ] ||
+   ! sha256sum --check --status "$state/hamclock-binary.sha256" 2>/dev/null; then
+    download=$(mktemp -d /var/tmp/hamclock-download.XXXXXX)
+    trap 'rm -rf "$download"' EXIT HUP INT TERM
     curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 \
-        --connect-timeout 20 --max-time 300 "$source_url" -o "$build/source.zip"
-    if ! printf '%s  %s\n' "$source_sha" "$build/source.zip" | sha256sum --check --status; then
-        echo "HamClock source checksum mismatch; refusing to build changed source" >&2
-        exit 1
+        --connect-timeout 20 --max-time 300 "$binary_url" -o "$download/binary.tar.gz"
+    if ! printf '%s  %s\n' "$binary_sha" "$download/binary.tar.gz" | sha256sum --check --status; then
+        echo 'HamClock binary checksum mismatch; existing executable was preserved' >&2; exit 1
     fi
-    # Extract and compile as the unprivileged application user.
-    chown hamclock:hamclock "$build" "$build/source.zip"
-    runuser -u hamclock -- unzip -q "$build/source.zip" -d "$build"
-    # Upstream millis() uses wall time: NTP steps can turn wdDelay() negative.
-    # Use a monotonic elapsed-time clock, preserving the uint32_t wrap contract.
-    runuser -u hamclock -- python3 - "$build/ESPHamClock/ArduinoLib/Arduino.cpp" <<'MONOTONIC'
-from pathlib import Path
-import sys
-path = Path(sys.argv[1])
-source = path.read_text()
-start = source.index('uint32_t millis(void)\n{')
-end = source.index('\n}', start) + 2
-old = source[start:end]
-if 'gettimeofday' not in old:
-    raise SystemExit('Unexpected HamClock millis implementation; refusing to patch')
-new = """uint32_t millis(void)
-{
-    static const struct timespec origin = [] {
-        struct timespec initial;
-        if (clock_gettime(CLOCK_MONOTONIC, &initial) != 0)
-            abort();
-        return initial;
-    }();
-    struct timespec current;
-    if (clock_gettime(CLOCK_MONOTONIC, &current) != 0)
-        abort();
-    int64_t ns = (int64_t)(current.tv_sec - origin.tv_sec)*1000000000LL
-                 + current.tv_nsec - origin.tv_nsec;
-    return (uint32_t)(ns/1000000);
-}"""
-path.write_text(source[:start] + new + source[end:])
-MONOTONIC
-    runuser -u hamclock -- make -C "$build/ESPHamClock" -j2 hamclock-800x480
-    install -m 0755 "$build/ESPHamClock/hamclock-800x480" /usr/local/lib/hamclock/.hamclock-new
+    # Reject unexpected paths before extraction, even for a pinned archive.
+    expected=$(printf '%s\n' BUILD-INFO.txt LICENSE hamclock-800x480 hamclock.1)
+    [ "$(tar -tzf "$download/binary.tar.gz" | LC_ALL=C sort)" = "$expected" ] || {
+        echo 'Unexpected binary archive contents' >&2; exit 1;
+    }
+    tar --no-same-owner --no-same-permissions -xzf "$download/binary.tar.gz" -C "$download"
+    for file in hamclock-800x480 LICENSE hamclock.1 BUILD-INFO.txt; do
+        [ -f "$download/$file" ] && [ ! -L "$download/$file" ] || exit 1
+    done
+    install -m 755 "$download/hamclock-800x480" /usr/local/lib/hamclock/.hamclock-new
     mv -f /usr/local/lib/hamclock/.hamclock-new /usr/local/lib/hamclock/hamclock-800x480
-    install -m 0644 "$build/ESPHamClock/LICENSE" /usr/local/share/doc/hamclock/LICENSE
-    install -m 0644 "$build/ESPHamClock/hamclock.1" /usr/local/share/man/man1/hamclock.1
-    printf '%s\n' "$source_sha" > "$state/hamclock-source.sha256"
-    printf '%s\n' "$build_id" > "$state/hamclock-build-id"
+    install -m 644 "$download/LICENSE" /usr/local/share/doc/hamclock/LICENSE
+    install -m 644 "$download/BUILD-INFO.txt" /usr/local/share/doc/hamclock/BUILD-INFO.txt
+    install -m 644 "$download/hamclock.1" /usr/local/share/man/man1/hamclock.1
+    sha256sum /usr/local/lib/hamclock/hamclock-800x480 > "$state/hamclock-binary.sha256"
+    printf '%s\n' "$binary_sha" > "$state/hamclock-archive.sha256"
 fi
 cat > /usr/local/bin/hamclock <<'LAUNCH'
 #!/bin/sh
@@ -120,7 +100,7 @@ Terminal=false
 OnlyShowIn=XFCE;
 DESKTOP
 chown hamclock:hamclock /home/hamclock/.config/autostart/hamclock.desktop
-printf 'hamclock-4.27-x11-800x480-monotonic-v1\n' > "$state/hamclock-profile"
+printf 'hamclock-4.27-static-amd64-monotonic-v1\n' > "$state/hamclock-profile"
 # A running user's service manager reloads automatically on the next login.
 # For an upgrade in an active desktop, restart through hamclock-session as that user.
 echo 'HamClock installed; it will start at the next XFCE login.'

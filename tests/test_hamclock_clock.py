@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ClockTests(unittest.TestCase):
     def test_monotonic_elapsed_and_uint32_wrap(self):
-        installer = (ROOT / 'scripts/install-hamclock.sh').read_text()
+        installer = (ROOT / 'scripts/build-hamclock.sh').read_text()
         patcher = re.search(r"<<'MONOTONIC'\n(.*?)\nMONOTONIC", installer, re.S).group(1)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

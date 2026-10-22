@@ -4,7 +4,7 @@ Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
 a BIOS installation and reboot have passed in a disposable nested-KVM VM.
 See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
 tests. The user also reports a successful physical UEFI installation, including
-autologin and networking. The installer now also builds and starts HamClock; Comitup supplies a Wi-Fi setup hotspot when an AP-capable adapter is available.
+autologin and networking. The installer now downloads and starts a prebuilt static HamClock binary; Comitup supplies a Wi-Fi setup hotspot when an AP-capable adapter is available.
 See [HamClock installation and startup](docs/hamclock-integration.md) for scope and
 validation of this new stage.
 
@@ -18,7 +18,7 @@ validation of this new stage.
 - XFCE with LightDM graphical autologin as `hamclock`.
 - Always-on desktop: automatic sleep, screen blanking and locking disabled on AC
   and battery; see [existing-install update and validation](docs/always-on.md).
-- Checksum-pinned HamClock 4.27 X11 build (800×480), started fullscreen by a user
+- Checksum-pinned, prebuilt static HamClock 4.27 X11 binary (800×480), started fullscreen by a user
   service at XFCE login, with restart on failure. Callsign/location setup remains
   interactive on first launch.
 - Comitup setup hotspot with common non-free Wi-Fi firmware installed; see
@@ -44,8 +44,9 @@ python3 -m unittest discover -s tests -v
 sh -n scripts/configure-target.sh
 ```
 
-`build/preseed.cfg` embeds the target script, avoiding a second late-install script
-fetch. Both transports use exactly this profile. Do not edit the generated file.
+`build/preseed.cfg` embeds the setup scripts; `build/repair-hamclock.sh` runs the
+same stages on an existing installation. HamClock is downloaded as a fixed,
+checksum-verified binary release; the installation target does not compile it. Both transports use exactly this profile. Do not edit the generated file.
 CI also runs ShellCheck. Static checks do not establish installer runtime correctness.
 
 ## Disk safety and interaction
@@ -103,8 +104,9 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, absence of partition/bootloader selections,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Five local tests and ShellCheck cover the
-extended profile, including first-session service startup and a compiled elapsed-clock regression. The USB builder regression
+The base profile passed GitHub CI. Eight local tests and ShellCheck cover the
+extended profile, including first-session startup, compiled elapsed-clock behavior,
+installer-media APT cleanup and preservation of failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
 DHCP, disk selection/erase cancellation, SSH password login, sudo, XFCE autologin,
 and hostname persistence across reboot. The second virtual disk remained unchanged.
@@ -131,6 +133,9 @@ Before recommending deployment, complete the remaining acceptance matrix for
 ## Application and Wi-Fi stages
 
 Base OS, HamClock and Comitup configuration are shared across iPXE and USB.
+If late setup fails, the complete stage log is `/var/log/hamclock-installer.log`
+on the installed target (`/target/var/log/hamclock-installer.log` while still in
+Debian Installer). See [failure recovery](docs/binary-install.md).
 The stages also support upgrades of the previously installed base. See
 [HamClock](docs/hamclock-integration.md) and [Wi-Fi](docs/wifi.md) for usage,
 network ownership, firmware limitations and the distinction between VM upgrade
