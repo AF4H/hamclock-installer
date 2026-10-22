@@ -22,6 +22,9 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(base64.b64decode(installer_payload), (ROOT / 'scripts/install-hamclock.sh').read_bytes())
         subprocess.run(['sh', '-n'], input=base64.b64decode(installer_payload), check=True)
         subprocess.run(['sh', '-n'], input=base64.b64decode(payload), check=True)
+        wifi_payload = seed.split('printf %s ')[3].split(' |')[0]
+        self.assertEqual(base64.b64decode(wifi_payload), (ROOT / 'scripts/install-wifi.sh').read_bytes())
+        subprocess.run(['sh', '-n'], input=base64.b64decode(wifi_payload), check=True)
         self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
         self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
 

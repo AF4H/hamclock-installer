@@ -4,7 +4,7 @@ Initial **Debian 13 (trixie), amd64** base installer. Implementation for review;
 a BIOS installation and reboot have passed in a disposable nested-KVM VM.
 See [the test report](docs/vm-test-2026-10-21.md) for exact coverage and remaining
 tests. The user also reports a successful physical UEFI installation, including
-autologin and networking. The installer now also builds and starts HamClock; Comitup remains deferred.
+autologin and networking. The installer now also builds and starts HamClock; Comitup supplies a Wi-Fi setup hotspot when an AP-capable adapter is available.
 See [HamClock installation and startup](docs/hamclock-integration.md) for scope and
 validation of this new stage.
 
@@ -17,6 +17,8 @@ validation of this new stage.
 - Checksum-pinned HamClock 4.27 X11 build (800×480), started fullscreen by a user
   service at XFCE login, with restart on failure. Callsign/location setup remains
   interactive on first launch.
+- Comitup setup hotspot with common non-free Wi-Fi firmware installed; see
+  [Wi-Fi setup and test coverage](docs/wifi.md).
 - Persistent `hamclock-xxxxx` hostname, five random hexadecimal characters generated
   during target configuration. It is saved under `/var/lib/hamclock-installer/hostname`
   and reused if configuration is retried. This is not a globally unique identifier;
@@ -61,6 +63,9 @@ and a working trust configuration for the Debian kernel/initrd URLs. Use matched
 kernel and initrd from the same Debian installer release; for repeatable deployment,
 cache and verify a matched pair rather than relying on the moving `current` path.
 The boot parameters configure DHCP before the network preseed can be fetched.
+The stock netboot initrd may lack non-free firmware: use wired networking with an
+included driver, or supply Debian's matching firmware archive in your deployment
+initrd. Enabling firmware in the preseed cannot fix networking before it is fetched.
 An iPXE key prompt precedes boot. BIOS/UEFI iPXE loading and DHCP infrastructure
 are provided by the deployment environment, not by this repository.
 
@@ -119,15 +124,13 @@ Before recommending deployment, complete the remaining acceptance matrix for
 7. Repeat on actual amd64 hardware and record ISO version/checksums, firmware mode,
    transport and results before claiming end-to-end support.
 
-## Next integrations
+## Application and Wi-Fi stages
 
-Base OS and HamClock configuration are shared across iPXE and USB. The HamClock
-stage is implemented with pinned source, repeatable installation and a supervised
-fullscreen launch; its separate test report distinguishes guest-upgrade checks from
-a fresh installer run. Add Comitup in a separate stage with
-explicit ownership of network interfaces (avoid competing DHCP/network managers),
-Wi-Fi hardware/firmware tests and recovery-access tests. Neither integration should
-bypass disk confirmations or regenerate the installed host identity.
+Base OS, HamClock and Comitup configuration are shared across iPXE and USB.
+The stages also support upgrades of the previously installed base. See
+[HamClock](docs/hamclock-integration.md) and [Wi-Fi](docs/wifi.md) for usage,
+network ownership, firmware limitations and the distinction between VM upgrade
+checks and fresh installer tests. Disk confirmations and installed identity persist.
 
 ## Reference assumptions
 
