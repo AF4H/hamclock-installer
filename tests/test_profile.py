@@ -16,9 +16,15 @@ class ProfileTests(unittest.TestCase):
     def test_preseed_and_embedded_script(self):
         seed = render()
         subprocess.run(['debconf-set-selections', '--checkonly'], input=seed, text=True, check=True)
-        self.assertFalse(re.search(r'^\S+ (?:partman[^ ]*|grub-installer/bootdev) ', seed, re.M))
+        self.assertNotRegex(seed, r'(?m)^d-i (?:partman-auto/disk|grub-installer/bootdev) ')
+        self.assertIn('partman-auto/choose_recipe select atomic', seed)
+        self.assertIn('|| { poweroff; while :; do sleep 60; done; }', seed)
+        self.assertIn('network-console/password password h@mradio', seed)
+        self.assertIn('network-console/start note', seed)
+        self.assertIn('netcfg/wireless_essid string AF4H', seed)
         payloads = re.findall(r'printf %s ([A-Za-z0-9+/=]+) \| base64 -d', seed)
-        self.assertEqual(len(payloads), len(STAGES))
+        self.assertEqual(len(payloads), len(STAGES) + 1)
+        self.assertEqual(base64.b64decode(payloads.pop(0)), (ROOT / 'scripts/installer-disk.sh').read_bytes())
         for encoded, (_, filename) in zip(payloads, STAGES):
             payload = base64.b64decode(encoded)
             self.assertEqual(payload, (ROOT / 'scripts' / filename).read_bytes())

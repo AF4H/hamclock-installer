@@ -66,7 +66,8 @@ SSID/password containing spaces and special characters.
 This validates migration and actual profile use in a running guest, including a
 NetworkManager restart. It does not establish a fresh full ISO installation,
 physical adapter operation or a complete Wi-Fi boot/power-cycle test. Those remain
-for the next bare-metal test. Boot appearance, disk automation, direct USB boot
-and preset installer Wi-Fi changes remain deferred.
+for the next bare-metal test. The subsequently authorized boot appearance, disk
+automation, direct USB boot and preset Wi-Fi changes are described in
+[automatic installation](automatic-install.md).
 
 Reference: [NetworkManager keyfile format](https://networkmanager.dev/docs/api/latest/nm-settings-keyfile.html).

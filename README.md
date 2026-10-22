@@ -49,15 +49,18 @@ same stages on an existing installation. HamClock is downloaded as a fixed,
 checksum-verified binary release; the installation target does not compile it. Both transports use exactly this profile. Do not edit the generated file.
 CI also runs ShellCheck. Static checks do not establish installer runtime correctness.
 
-## Disk safety and interaction
+## Automatic installation and disk consent
 
-Boot with `auto=true priority=high`. No partition method, disk, recipe, bootloader
-disk or destructive confirmation is preseeded. The operator must select a disk,
-choose the partition layout, and approve Debian's write/erase confirmation screens.
-Existing LVM/RAID may introduce additional confirmations. Review the device model,
-size and partitions carefully, especially when a USB installer is attached.
-Do not add `priority=critical`, `partman-auto/disk`, or automated confirmation answers.
-This is a partially automated installer and needs a local console.
+The USB boots directly into the installer. Networking uses DHCP and the preset
+Wi-Fi `AF4H` / `h@mradio` when selected by automatic interface detection. After
+hardware/network setup, one explicit confirmation authorizes erasing the displayed
+disk. **All existing data on that disk is erased.** No is the default and shuts down.
+The disk must be the only eligible internal disk; USB/media devices are excluded
+and ambiguous layouts stop. Partitioning and later setup are automatic after Yes.
+See [automatic install, disk rules and SSH access](docs/automatic-install.md).
+
+Installer SSH uses `installer` / `h@mradio`; installed SSH uses `hamclock` /
+`h@mradio`. The installed GRUB timeout is zero with a graphical Plymouth splash.
 
 ## iPXE
 
@@ -71,7 +74,7 @@ The boot parameters configure DHCP before the network preseed can be fetched.
 The stock netboot initrd may lack non-free firmware: use wired networking with an
 included driver, or supply Debian's matching firmware archive in your deployment
 initrd. Enabling firmware in the preseed cannot fix networking before it is fetched.
-An iPXE key prompt precedes boot. BIOS/UEFI iPXE loading and DHCP infrastructure
+The same disk consent screen precedes partitioning. BIOS/UEFI iPXE loading and DHCP infrastructure
 are provided by the deployment environment, not by this repository.
 
 ## Bootable USB image
@@ -84,10 +87,9 @@ then supply the corresponding checksum:
 python3 scripts/build-usb.py debian-13.x.x-amd64-netinst.iso EXPECTED_SHA256 hamclock-amd64.iso
 ```
 
-The builder checks the input hash, embeds the shared preseed, appends a HamClock
-menu entry to BIOS ISOLINUX and UEFI GRUB menus, and asks xorriso to replay the
-original hybrid boot metadata. It keeps stock entries and never writes a physical
-disk. Select **HamClock Debian 13 (interactive disks)** in the resulting boot menu.
+The builder checks the input hash, embeds the shared preseed, replaces the BIOS ISOLINUX and UEFI GRUB menus with direct installer boot, and asks xorriso to replay the
+original hybrid boot metadata. The builder never writes a physical disk. The resulting media boots straight
+into the installer and then asks for explicit disk-erasing consent.
 Write the resulting ISO using a trusted image writer, verifying the USB device's
 identity before erasing it. Remove installation media after installation.
 
@@ -101,10 +103,10 @@ UEFI without Secure Boot.
 ## Validation status and acceptance plan
 
 Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
-syntax, embedded script equality, absence of partition/bootloader selections,
+syntax, embedded script equality, disk consent and matching partition/bootloader destinations,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Eleven local tests and ShellCheck cover the
+The base profile passed GitHub CI. Sixteen local tests and ShellCheck cover the
 extended profile, including first-session startup, compiled elapsed-clock behavior,
 installer-media APT cleanup, Wi-Fi handoff/credential preservation and failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
@@ -119,8 +121,8 @@ Before recommending deployment, complete the remaining acceptance matrix for
 **both transports**; the initial BIOS ISO result covers only part of it:
 
 1. BIOS and UEFI boot, DHCP and preseed retrieval, package availability on trixie.
-2. Two virtual disks: operator selects the intended disk, cancellation at final
-   destructive confirmation leaves both unchanged, approval modifies only that disk.
+2. Two virtual disks: automatic installation stops without selecting either disk.
+   With one eligible disk, declining the initial erase consent leaves it unchanged.
    Repeat with existing partitions, LVM/RAID, and a USB installer attached.
 3. Confirm install success and late-command errors are visible; check installer logs.
 4. Reboot twice: hostname stays fixed, DHCP works, XFCE autologin appears.
@@ -139,7 +141,8 @@ Debian Installer). See [failure recovery](docs/binary-install.md).
 The stages also support upgrades of the previously installed base. See
 [HamClock](docs/hamclock-integration.md) and [Wi-Fi](docs/wifi.md) for usage,
 network ownership, firmware limitations and the distinction between VM upgrade
-checks and fresh installer tests. Disk confirmations and installed identity persist.
+checks and fresh installer tests. The initial erase consent remains required;
+installed identity persists across recovery runs.
 
 ## Reference assumptions
 

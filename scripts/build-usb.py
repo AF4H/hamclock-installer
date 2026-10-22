@@ -26,20 +26,30 @@ def run(*args):
 with tempfile.TemporaryDirectory() as temp:
     temp = Path(temp)
     # These paths are from Debian amd64 netinst, not live or DVD images.
-    for source, name in [('/isolinux/txt.cfg', 'txt.cfg'), ('/boot/grub/grub.cfg', 'grub.cfg')]:
+    for source, name in [('/isolinux/isolinux.cfg', 'isolinux.cfg'), ('/boot/grub/grub.cfg', 'grub.cfg')]:
         run('-osirrox', 'on', '-indev', a.iso, '-extract', source, temp / name)
         # Debian ISO menu files are read-only; extraction preserves their modes.
         menu = temp / name
         menu.chmod(menu.stat().st_mode | stat.S_IWUSR)
-    args = 'auto=true priority=high interface=auto netcfg/disable_autoconfig=false netcfg/get_hostname=hamclock-install netcfg/get_domain=local preseed/file=/cdrom/preseed.cfg'
-    with (temp / 'txt.cfg').open('a') as f:
-        f.write('\nlabel hamclock\n  menu label HamClock Debian 13 (interactive disks)\n  kernel /install.amd/vmlinuz\n  append initrd=/install.amd/initrd.gz ' + args + ' ---\n')
-    with (temp / 'grub.cfg').open('a') as f:
-        f.write('\nmenuentry "HamClock Debian 13 (interactive disks)" {\n  linux /install.amd/vmlinuz ' + args + ' ---\n  initrd /install.amd/initrd.gz\n}\n')
+    args = ('auto=true priority=high interface=auto netcfg/disable_autoconfig=false '
+            'netcfg/get_hostname=hamclock-install netcfg/get_domain=local '
+            'netcfg/wireless_essid=AF4H netcfg/wireless_security_type=wpa '
+            'netcfg/wireless_wpa=h@mradio preseed/file=/cdrom/preseed.cfg quiet')
+    (temp / 'isolinux.cfg').write_text(
+        'path \nprompt 0\ntimeout 0\ndefault hamclock\n'
+        'label hamclock\n  kernel /install.amd/vmlinuz\n'
+        '  append initrd=/install.amd/initrd.gz ' + args + ' ---\n')
+    (temp / 'grub.cfg').write_text(
+        'if loadfont $prefix/font.pf2; then\n'
+        '  insmod all_video\n  insmod gfxterm\n  terminal_output gfxterm\nfi\n'
+        'set default=0\nset timeout_style=hidden\nset timeout=0\n'
+        'menuentry "HamClock automatic installation" {\n'
+        '  linux /install.amd/vmlinuz ' + args + ' ---\n'
+        '  initrd /install.amd/initrd.gz\n}\n')
     (temp / 'preseed.cfg').write_text(render())
-    # Replay original hybrid BIOS/UEFI boot metadata, retaining stock entries.
+    # Replay the original hybrid boot metadata; both firmware paths boot directly.
     run('-indev', a.iso, '-outdev', a.output, '-boot_image', 'any', 'replay',
-        '-map', temp / 'txt.cfg', '/isolinux/txt.cfg',
+        '-map', temp / 'isolinux.cfg', '/isolinux/isolinux.cfg',
         '-map', temp / 'grub.cfg', '/boot/grub/grub.cfg',
         '-map', temp / 'preseed.cfg', '/preseed.cfg')
 print(a.output)

@@ -9,6 +9,7 @@ STAGES = [
     ('wifi', 'install-wifi.sh'),  # Repair installer-media APT entries before downloads.
     ('install', 'install-hamclock.sh'),
     ('desktop', 'configure-desktop.sh'),
+    ('boot', 'configure-boot.sh'),
     ('mdns', 'install-mdns.sh'),
 ]
 
@@ -30,7 +31,10 @@ def target_command():
             'tail -n 80 /var/log/hamclock-installer.log; exit "$status"')
 
 def render():
-    return (ROOT / 'preseed/base.cfg').read_text() + (
+    disk = base64.b64encode((ROOT / 'scripts/installer-disk.sh').read_bytes()).decode()
+    early = (f'd-i partman/early_command string printf %s {disk} | base64 -d > /tmp/hamclock-disk.sh && '
+             '/bin/sh /tmp/hamclock-disk.sh || { poweroff; while :; do sleep 60; done; }\n')
+    return (ROOT / 'preseed/base.cfg').read_text() + early + (
         "d-i preseed/late_command string in-target /bin/sh -c '" + target_command() + "'\n"
     )
 

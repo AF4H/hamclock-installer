@@ -31,8 +31,10 @@ else:
             source, target = args[index+1:index+3]
             text = Path(source).read_text()
             if target.endswith('.cfg') and target != '/preseed.cfg':
-                assert '# original menu' in text
-                assert 'HamClock Debian 13 (interactive disks)' in text
+                assert '# original menu' not in text
+                assert 'timeout 0' in text or 'set timeout=0' in text
+                assert 'vesamenu' not in text
+                assert 'netcfg/wireless_essid=AF4H' in text
                 assert 'priority=high' in text
                 assert 'preseed/file=/cdrom/preseed.cfg' in text
             else:
