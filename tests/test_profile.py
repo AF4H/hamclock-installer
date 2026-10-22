@@ -17,7 +17,7 @@ class ProfileTests(unittest.TestCase):
         seed = render()
         subprocess.run(['debconf-set-selections', '--checkonly'], input=seed, text=True, check=True)
         self.assertNotRegex(seed, r'(?m)^d-i (?:partman-auto/disk|grub-installer/bootdev) ')
-        self.assertIn('partman-auto/choose_recipe select atomic', seed)
+        self.assertIn('partman-auto/choose_recipe select hamclock', seed)
         self.assertIn('|| { poweroff; while :; do sleep 60; done; }', seed)
         self.assertIn('network-console/password password h@mradio', seed)
         self.assertIn('network-console/start note', seed)
@@ -32,8 +32,7 @@ class ProfileTests(unittest.TestCase):
         subprocess.run(['sh', '-n'], input=repair_script(), text=True, check=True)
         self.assertLess(seed.index('HamClock-stage=wifi'), seed.index('HamClock-stage=install'))
         self.assertIn('apt-setup/disable-cdrom-entries boolean true', seed)
-        self.assertIn('priority=high', (ROOT / 'boot/hamclock.ipxe').read_text())
-        self.assertNotIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
+        self.assertIn('priority=critical', (ROOT / 'boot/hamclock.ipxe').read_text())
 
     def test_stage_failure_keeps_status_and_log(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -35,7 +35,9 @@ else:
                 assert 'timeout 0' in text or 'set timeout=0' in text
                 assert 'vesamenu' not in text
                 assert 'netcfg/wireless_essid=AF4H' in text
-                assert 'priority=high' in text
+                assert 'netcfg/wireless_show_essids=manual' in text
+                assert 'netcfg/wireless_essid_again=AF4H' in text
+                assert 'priority=critical' in text
                 assert 'preseed/file=/cdrom/preseed.cfg' in text
             else:
                 assert 'preseed/late_command' in text

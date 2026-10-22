@@ -27,10 +27,10 @@ db_set() { echo "set $*" >> "$HAMCLOCK_TEST_ROOT/calls"; }
             path.chmod(0o755)
         return root
 
-    def disk(self, root, name, usb=False, removable='0'):
+    def disk(self, root, name, usb=False, removable='0', sectors='41943040'):
         block = root / 'sys/block' / name
         block.mkdir()
-        for filename, value in [('removable', removable), ('ro', '0'), ('size', '41943040')]:
+        for filename, value in [('removable', removable), ('ro', '0'), ('size', sectors)]:
             (block / filename).write_text(value)
         device = root / 'sys/devices' / ('usb1' if usb else 'pci') / name
         device.mkdir(parents=True)
@@ -95,3 +95,25 @@ db_set() { echo "set $*" >> "$HAMCLOCK_TEST_ROOT/calls"; }
             result, calls = self.run_script(root, 'true')
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('set partman-auto/disk /dev/nvme0n1', calls)
+
+    def test_decimal_4gb_boundary_and_uefi_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.fixture(tmp)
+            self.disk(root, 'vda', sectors='7812499')
+            self.assertNotEqual(self.run_script(root, 'true')[0].returncode, 0)
+            (root/'sys/block/vda/size').write_text('7812500')
+            (root/'sys/firmware/efi').mkdir(parents=True)
+            result, calls = self.run_script(root, 'true')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('method{ efi }', calls)
+            self.assertIn('256 256 256 linux-swap', calls)
+            self.assertIn('set partman-auto/disk /dev/vda', calls)
+
+    def test_8gb_bios_layout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.fixture(tmp)
+            self.disk(root, 'vda', sectors='15625000')
+            result, calls = self.run_script(root, 'true')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('method{ biosgrub }', calls)
+            self.assertNotIn('method{ efi }', calls)

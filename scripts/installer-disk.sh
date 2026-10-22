@@ -17,7 +17,7 @@ Template: hamclock/erase-disk
 Type: boolean
 Default: false
 Description: Install HamClock and erase ${DISK}?
- Target: ${MODEL} (${SIZE} GiB), ${DISK}.
+ Target: ${MODEL} (${SIZE} GB), ${DISK}.
  .
  ALL partitions, operating systems, and files on this disk will be erased.
  After choosing Yes, installation is automatic. Choose No to shut down.
@@ -40,7 +40,7 @@ for block in "$root"/sys/block/*; do
     [ "$(cat "$block/removable")" = 0 ] || continue
     [ "$(cat "$block/ro")" = 0 ] || continue
     sectors=$(cat "$block/size")
-    [ "$sectors" -ge 33554432 ] || continue
+    [ "$sectors" -ge 7812500 ] || continue
     case "$(readlink -f "$block/device")" in */usb*|*/USB*) continue ;; esac
     # Exclude any physical disk backing directly mounted installer media.
     media=false
@@ -58,9 +58,9 @@ for block in "$root"/sys/block/*; do
     selected=$block
     selected_sectors=$sectors
 done
-[ "$count" -eq 1 ] || stop "Expected exactly one writable, non-USB internal disk of at least 16 GiB; found $count."
+[ "$count" -eq 1 ] || stop "Expected exactly one writable, non-USB internal disk of at least 4 GB; found $count."
 model=$(cat "$selected/device/model" 2>/dev/null || printf '%s' "${disk##*/}")
-size=$((selected_sectors / 2097152))
+size=$((selected_sectors * 512 / 1000000000))
 fingerprint_selected() {
     current_sectors=$(cat "$selected/size") || return 1
     current_model=$(cat "$selected/device/model" 2>/dev/null || printf '%s' "${disk##*/}")
@@ -85,7 +85,19 @@ if [ "$(cat "$marker" 2>/dev/null || true)" != "$fingerprint" ]; then
     printf '%s\n' "$fingerprint" > "$marker"
 fi
 [ "$(fingerprint_selected)" = "$fingerprint" ] || stop 'The selected disk changed while awaiting confirmation.'
+# Small-appliance layout: bounded swap, remaining space for root; no 8 GB root
+# minimum from Debian's desktop atomic recipe. Firmware determines boot partition.
+if [ -d "$root/sys/firmware/efi" ]; then
+    # Literal partman recipe variables.
+    # shellcheck disable=SC2016
+    boot='256 256 256 free $primary{ } method{ efi } format{ } .'
+else
+    # Literal partman recipe variables.
+    # shellcheck disable=SC2016
+    boot='1 1 1 free $bios_boot{ } method{ biosgrub } .'
+fi
+db_set partman-auto/expert_recipe "hamclock :: $boot 2500 10000 -1 ext4 method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / } . 256 256 256 linux-swap method{ swap } format{ } ."
 # Set both destinations from the authorized disk; never rely on first-disk ordering.
 db_set partman-auto/disk "$disk"
 db_set grub-installer/bootdev "$disk"
-logger -t hamclock-installer "Erase authorized for $disk ($model, $size GiB)"
+logger -t hamclock-installer "Erase authorized for $disk ($model, $size GB)"

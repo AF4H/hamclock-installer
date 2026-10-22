@@ -31,9 +31,9 @@ with tempfile.TemporaryDirectory() as temp:
         # Debian ISO menu files are read-only; extraction preserves their modes.
         menu = temp / name
         menu.chmod(menu.stat().st_mode | stat.S_IWUSR)
-    args = ('auto=true priority=high interface=auto netcfg/disable_autoconfig=false '
+    args = ('auto=true priority=critical interface=auto netcfg/disable_autoconfig=false '
             'netcfg/get_hostname=hamclock-install netcfg/get_domain=local '
-            'netcfg/wireless_essid=AF4H netcfg/wireless_security_type=wpa '
+            'netcfg/wireless_show_essids=manual netcfg/wireless_essid_again=AF4H netcfg/wireless_essid=AF4H netcfg/wireless_security_type=wpa '
             'netcfg/wireless_wpa=h@mradio preseed/file=/cdrom/preseed.cfg quiet')
     (temp / 'isolinux.cfg').write_text(
         'path \nprompt 0\ntimeout 0\ndefault hamclock\n'

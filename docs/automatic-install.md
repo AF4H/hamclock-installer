@@ -4,7 +4,11 @@ The USB image boots directly into Debian Installer in BIOS and UEFI mode. There
 is no USB installation menu. Wi-Fi is preconfigured for SSID `AF4H`, WPA password
 `h@mradio`; a linked wired connection can be selected by Debian's automatic
 interface detection instead. DHCP remains enabled. These credentials are present
-in the image, preseed and boot parameters.
+in the image, preseed and boot parameters. The boot priority is `critical` and
+`netcfg/wireless_show_essids=manual` selects the supplied ESSID without the
+otherwise unconditional high-priority scan-selection prompt. Both manual ESSID
+questions are seeded for scan-success and scan-failure paths. Disk consent remains
+a critical-priority question and still requires an explicit Yes.
 
 After networking and hardware detection, the installer shows one erase consent
 screen with the target disk path, model and capacity. **Yes authorizes erasing all
@@ -12,8 +16,14 @@ partitions, operating systems and files on that disk.** No is the default and
 shuts down without authorizing partitioning. After Yes, guided whole-disk
 partitioning, package installation and setup proceed automatically.
 
+The small-appliance recipe uses a 256 MB EFI partition (or a BIOS boot partition),
+256 MB swap and the remaining space for ext4 root. The desktop is XFCE with Xorg
+and the appliance services, without Debian's broad desktop task/recommended office
+and multimedia package bundle. Disk eligibility is a 4 GB minimum, not a claim
+that every future package version or update will fit on that minimum.
+
 The target must be the only writable, non-removable, non-USB physical disk of at
-least 16 GiB. Installer-media disks are excluded even when a USB device reports
+least 4 GB (4,000,000,000 bytes). Installer-media disks are excluded even when a USB device reports
 itself as non-removable. Zero or multiple candidates stop automatic installation;
 disconnect extra internal disks before retrying. Indirect loop/device-mapper
 installation media is rejected. This is not a general-purpose multi-disk selector.
@@ -104,3 +114,19 @@ Nested KVM tests used disposable disks only:
 
 These tests do not cover Secure Boot, physical firmware/radios, existing
 LVM/RAID layouts, or an iPXE installation.
+
+## Small-disk and Wi-Fi selection correction
+
+Debian 13's netcfg 1.197 resets the scan-selection question to unseen even when
+`wireless_essid` is seeded. The new boot settings skip that high-priority question
+and use the manual ESSID path; failed association/authentication still follows
+Debian's error handling. Automatic interface detection still prefers a connected
+wired interface. This fixes an observed selection prompt, not missing adapter
+firmware or a radio authentication problem.
+
+The former 16 GiB cutoff excluded marketed 8 GB and even some 16 GB disks. The new
+cutoff is decimal 4 GB. Regression coverage checks the exact lower boundary, an
+8 GB disk, firmware-specific recipes and USB exclusion. Eighteen local tests pass.
+
+Source inspected: [Debian netcfg 1.197 source archive](https://deb.debian.org/debian/pool/main/n/netcfg/netcfg_1.197.tar.xz),
+`wireless.c`, `netcfg_wireless_show_essids` and `netcfg_wireless_set_essid`.

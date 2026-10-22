@@ -55,7 +55,7 @@ The USB boots directly into the installer. Networking uses DHCP and the preset
 Wi-Fi `AF4H` / `h@mradio` when selected by automatic interface detection. After
 hardware/network setup, one explicit confirmation authorizes erasing the displayed
 disk. **All existing data on that disk is erased.** No is the default and shuts down.
-The disk must be the only eligible internal disk; USB/media devices are excluded
+The disk must be the only eligible internal disk of at least 4 GB; USB/media devices are excluded
 and ambiguous layouts stop. Partitioning and later setup are automatic after Yes.
 See [automatic install, disk rules and SSH access](docs/automatic-install.md).
 
@@ -106,7 +106,7 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, disk consent and matching partition/bootloader destinations,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Sixteen local tests and ShellCheck cover the
+The base profile passed GitHub CI. Eighteen local tests and ShellCheck cover the
 extended profile, including first-session startup, compiled elapsed-clock behavior,
 installer-media APT cleanup, Wi-Fi handoff/credential preservation and failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
