@@ -89,7 +89,8 @@ Restart=on-failure
 RestartSec=10
 # HamClock keeps its rotating diagnostics in ~/.hamclock by default.
 UNIT
-install -d -o hamclock -g hamclock /home/hamclock/.config/autostart /home/hamclock/.hamclock
+# Name the parent explicitly: install -d otherwise creates it owned by root.
+install -d -o hamclock -g hamclock /home/hamclock/.config /home/hamclock/.config/autostart /home/hamclock/.hamclock
 cat > /home/hamclock/.config/autostart/hamclock.desktop <<'DESKTOP'
 [Desktop Entry]
 Type=Application

@@ -39,7 +39,8 @@ xset s noblank
 xset -dpms || true
 SESSION
 chmod 755 /usr/local/bin/hamclock-desktop-settings
-install -d -o hamclock -g hamclock /home/hamclock/.config/autostart
+# Name the parent explicitly: install -d otherwise creates it owned by root.
+install -d -o hamclock -g hamclock /home/hamclock/.config /home/hamclock/.config/autostart
 cat > /home/hamclock/.config/autostart/hamclock-desktop-settings.desktop <<'DESKTOP'
 [Desktop Entry]
 Type=Application

@@ -73,8 +73,8 @@ messages before GRUB remain under the machine firmware's control.
 NetworkManager's wait-online unit is disabled so lack of an upstream network does
 not delay the desktop. NetworkManager and Comitup still start normally and manage
 connectivity. This is not a claim of a measured speed improvement on all hardware.
-The failsafe-session issue and physical Wi-Fi verification remain separately
-deferred; boot polish does not establish that those problems are resolved.
+The later failsafe-session ownership repair is documented below. Boot polish
+alone does not establish a working desktop or physical Wi-Fi connection.
 
 ## Disposable VM validation (2026-10-22)
 
@@ -154,3 +154,23 @@ priority. The selected answer was `manual`; both ESSID answers were `AF4H`. The
 critical erase confirmation remained visible with No selected before explicit
 approval. This checks the real frontend behavior behind the selection fix; no
 physical radio authentication or firmware compatibility is claimed.
+
+## Failsafe-session ownership repair
+
+The physical installation's user journal showed xfconfd could not create its
+configuration directory. `/home/hamclock/.config` was root-owned: `install -d`
+created that intermediate parent as root while applying the requested owner only
+to the explicitly named `autostart` directory. Both target setup scripts now name
+the `.config` parent explicitly with the `hamclock` owner/group. This also repairs
+that parent when running setup again without changing ownership recursively.
+
+On the supplied physical machine, correcting only the parent ownership and
+restarting LightDM restored the XFCE session. xfconfd, xfwm4 and HamClock were
+running, with zero HamClock service restarts. HamClock diagnostics reported its
+first-run setup screen and physical touch events. NetworkManager reported a
+connected Wi-Fi profile whose SSID was AF4H; root had about 12 GB available. Screen
+blanking and DPMS were disabled. No machine reboot or network changes were needed.
+
+This verifies the repair on the existing bare-metal installation. The rebuilt ISO
+contains the corrected scripts; a new full installation with this final ownership
+change has not yet been run. Earlier failure observations above remain historical.
