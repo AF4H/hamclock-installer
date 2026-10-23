@@ -10,6 +10,7 @@ STAGES = [
     ('install', 'install-hamclock.sh'),
     ('display', 'configure-display.sh'),
     ('desktop', 'configure-desktop.sh'),
+    ('power', 'configure-power.sh'),
     ('boot', 'configure-boot.sh'),
     ('mdns', 'install-mdns.sh'),
 ]

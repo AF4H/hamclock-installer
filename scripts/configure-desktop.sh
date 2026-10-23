@@ -15,6 +15,12 @@ systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target 
 cat > /usr/local/bin/hamclock-desktop-settings <<'SESSION'
 #!/bin/sh
 set -eu
+# Trust only our managed launcher when the optional GVFS metadata backend exists.
+launcher="$HOME/Desktop/HamClock.desktop"
+if [ -f "$launcher" ]; then
+    checksum=$(sha256sum "$launcher" | cut -d' ' -f1)
+    gio set -t string "$launcher" metadata::xfce-exe-checksum "$checksum" 2>/dev/null || true
+fi
 # Update through the running settings daemon, never overwrite its live XML files.
 set_property() {
     xfconf-query --channel "$1" --property "$2" --create --type "$3" --set "$4"

@@ -16,7 +16,7 @@ mkdir -p "$state" /usr/local/lib/hamclock /usr/local/share/doc/hamclock /usr/loc
 exec 9>"$state/hamclock-install.lock"
 flock -n 9 || { echo 'Another HamClock installation is running' >&2; exit 1; }
 # No compiler, headers, source archive or Python needed for binary installation.
-set -- curl ca-certificates x11-xserver-utils
+set -- curl ca-certificates x11-xserver-utils libglib2.0-bin
 missing=false
 for package do
     [ "$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)" = 'install ok installed' ] || missing=true
@@ -102,6 +102,21 @@ Terminal=false
 OnlyShowIn=XFCE;
 DESKTOP
 chown hamclock:hamclock /home/hamclock/.config/autostart/hamclock.desktop
+# Provide an application-menu entry and an executable desktop launcher.
+mkdir -p /usr/local/share/applications
+cat > /usr/local/share/applications/hamclock.desktop <<'SHORTCUT'
+[Desktop Entry]
+Type=Application
+Name=HamClock
+Comment=Open the HamClock station
+Exec=/usr/local/bin/hamclock-session
+Icon=preferences-system-time
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+SHORTCUT
+install -d -o hamclock -g hamclock /home/hamclock/Desktop
+install -m 755 -o hamclock -g hamclock /usr/local/share/applications/hamclock.desktop /home/hamclock/Desktop/HamClock.desktop
 printf 'hamclock-4.27-static-amd64-monotonic-v1\n' > "$state/hamclock-profile"
 # A running user's service manager reloads automatically on the next login.
 # For an upgrade in an active desktop, restart through hamclock-session as that user.

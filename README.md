@@ -16,6 +16,8 @@ validation of this new stage.
 - mDNS hostname and SSH/HamClock service discovery via Avahi; see
   [local-network access](docs/mdns.md).
 - XFCE with LightDM graphical autologin as `hamclock`.
+- HamClock desktop/application-menu shortcut and native shutdown authorization;
+  see [desktop controls](docs/desktop-controls.md).
 - Always-on desktop: automatic sleep, screen blanking and locking disabled on AC
   and battery; see [existing-install update and validation](docs/always-on.md).
 - Automatic display fitting for one active X11 output, preserving aspect ratio
