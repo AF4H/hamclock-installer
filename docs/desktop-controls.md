@@ -45,3 +45,9 @@ References: [XFCE launcher trust API](https://developer.xfce.org/libxfce4util/li
 HamClock 4.27 `ESPHamClock.cpp` shutdown handler, and the installed Debian logind
 policy action definitions. Desktop and power setup are shared by USB, iPXE and
 the generated recovery script.
+
+A subsequent supplied installation reported the same Shutdown failed message.
+Inspection found `polkitd` and the power rule were absent there; the previously
+tested power stage was installed on that machine too. Both power-off
+authorization checks then returned success. No additional permissions or
+physical power-off test were used.

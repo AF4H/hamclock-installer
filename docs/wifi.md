@@ -6,7 +6,23 @@ The shared installer installs Debian's Comitup package and NetworkManager, plus
 `non-free-firmware` component. This provides common firmware for changing hardware;
 it does not supply every vendor driver or guarantee access-point support.
 
-After installation, with a supported Wi-Fi adapter and no saved usable Wi-Fi
+The installed system saves AF4H (autoconnect priority 100) and FieldLink (50),
+with the requested initial key `h@mradio`. Existing AF4H credentials and connection
+identity are retained. FieldLink's requested key is set when this preset stage is
+run. Other network profiles are preserved. Both NetworkManager and the Comitup
+launcher use this preference order when choosing a connection. A working current
+connection is retained; this does not force a handover when AF4H appears later.
+The installer itself still initially selects AF4H; FieldLink is an installed-system
+fallback, available after the target setup stages complete.
+
+The preset stage handles extensionless keyfiles and reloads saved profiles without
+restarting networking. It also updates live in-memory profiles by UUID. The small
+Comitup launcher sorts its normal candidate list using saved NM priorities, since
+Debian's Comitup 1.43 otherwise uses enumeration order. It does not edit package
+files. Its service override applies at the next Comitup start; installing it does
+not restart Comitup or disrupt a remote session.
+
+After installation, with a supported Wi-Fi adapter and neither saved usable Wi-Fi
 connection:
 
 1. Connect a phone or laptop to the machine's `hamclock-xxxxx-setup` Wi-Fi network.

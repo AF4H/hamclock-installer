@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 STAGES = [
     ('configure', 'configure-target.sh'),
     ('wifi', 'install-wifi.sh'),  # Repair installer-media APT entries before downloads.
+    ('networks', 'configure-networks.sh'),
     ('install', 'install-hamclock.sh'),
+    ('defaults', 'configure-defaults.sh'),
     ('display', 'configure-display.sh'),
     ('desktop', 'configure-desktop.sh'),
     ('power', 'configure-power.sh'),

@@ -11,6 +11,8 @@ validation of this new stage.
 ## Installed base
 
 - DHCP on the interface selected by Debian Installer (wired networking recommended).
+- Installed Wi-Fi autoconnect: AF4H preferred, then FieldLink, both preset to
+  `h@mradio`; existing AF4H credentials are preserved.
 - `hamclock` user, initial password `h@mradio`, password-based sudo, locked root login.
 - OpenSSH server with password authentication, root SSH login disabled.
 - mDNS hostname and SSH/HamClock service discovery via Avahi; see
@@ -24,7 +26,8 @@ validation of this new stage.
   and the current panel mode; see [display fitting](docs/display.md).
 - Checksum-pinned, prebuilt static HamClock 4.27 X11 binary (800×480), started fullscreen by a user
   service at XFCE login, with restart on failure. Callsign/location setup remains
-  interactive on first launch.
+  editable on first launch, prefilled as `N0CALL`, 33.919° N / 83.998° W.
+  Existing station settings are preserved; see [station defaults](docs/station-defaults.md).
 - Comitup setup hotspot with common non-free Wi-Fi firmware installed; see
   [Wi-Fi setup and test coverage](docs/wifi.md).
 - Persistent `hamclock-xxxxx` hostname, five random hexadecimal characters generated
@@ -110,7 +113,7 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, disk consent and matching partition/bootloader destinations,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Twenty-one local tests and ShellCheck cover the
+The base profile passed GitHub CI. Twenty-seven local tests and ShellCheck cover the
 extended profile, including first-session startup, compiled elapsed-clock behavior,
 installer-media APT cleanup, Wi-Fi handoff/credential preservation and failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed
