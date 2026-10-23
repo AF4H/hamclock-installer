@@ -110,7 +110,9 @@ ExecStart=
 ExecStart=/usr/local/sbin/hamclock-comitup
 CONF
 systemctl daemon-reload
-if systemctl is-active --quiet NetworkManager.service; then
+# systemctl is-active may report success when ignored inside Debian Installer's
+# chroot. Only contact a live NM daemon outside that target chroot.
+if ! systemd-detect-virt --quiet --chroot && systemctl is-active --quiet NetworkManager.service; then
     nmcli connection reload
     # Include live in-memory/generated profiles that have no /etc keyfile yet.
     nmcli -g UUID connection show | while IFS= read -r identity; do

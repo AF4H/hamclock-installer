@@ -113,7 +113,7 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, disk consent and matching partition/bootloader destinations,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Twenty-seven local tests and ShellCheck cover the
+The base profile passed GitHub CI. Twenty-eight local tests and ShellCheck cover the
 extended profile, including first-session startup, compiled elapsed-clock behavior,
 installer-media APT cleanup, Wi-Fi handoff/credential preservation and failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed

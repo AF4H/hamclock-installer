@@ -1,5 +1,7 @@
 """Wi-Fi defaults must have explicit ordering and preserve unrelated networks."""
 import configparser
+import os
+import subprocess
 from io import StringIO
 from pathlib import Path
 import re
@@ -74,3 +76,16 @@ class PresetTests(unittest.TestCase):
         module={'__name__':'test'}; exec(compile(wrapper,'wrapper','exec'),module)
         self.assertEqual(module['prioritize'](['FieldLink','Other','AF4H','Another'],{'AF4H':100,'FieldLink':50}),
                          ['AF4H','FieldLink','Other','Another'])
+
+    def test_installer_chroot_does_not_contact_live_networkmanager(self):
+        tail=script[script.index('if ! systemd-detect-virt'):script.rindex("echo 'Comitup priority")]
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for name,body in [('systemd-detect-virt','exit "$CHROOT_STATUS"'),('systemctl','exit 0'),('nmcli','echo "$*" >> "$NM_CALLS"')]:
+                path=root/name; path.write_text('#!/bin/sh\n'+body+'\n'); path.chmod(0o755)
+            for status in ['0','1']:
+                log=root/('calls-'+status)
+                env=dict(os.environ, PATH=str(root)+':'+os.environ['PATH'],CHROOT_STATUS=status,NM_CALLS=str(log))
+                subprocess.run(['sh','-c',tail],env=env,check=True)
+                if status == '0': self.assertFalse(log.exists())
+                else: self.assertIn('connection reload',log.read_text())

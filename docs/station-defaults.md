@@ -21,7 +21,7 @@ requires revisiting this compatibility guard.
 
 ## Validation
 
-Twenty-seven local tests cover seed coordinates/callsign/grid and private mode,
+Twenty-eight local tests cover seed coordinates/callsign/grid and private mode,
 repeat execution, existing/legacy station preservation, unknown binary rejection,
 profile ordering/preservation and the previous installer regressions. The pinned
 source's own Maidenhead test converted the requested coordinates to EM83aw.
@@ -36,8 +36,11 @@ unchanged and HamClock's restart count at zero. Radio association with FieldLink
 was not exercised; these checks verify saved settings and selection order.
 
 The rebuilt field-defaults ISO has SHA256
-`6882cf515039e6798477fe231d74055bfb874e7bba7bfb786e5f4f9f65d16200`.
+`bfebacf6e169cd5dce69afbff0963f9d0024facd5ddaa66e5bf3b3d1b7a78754`.
 Its extracted preseed matched the reviewed generator. This final image has not
 yet undergone a new full installation; the runtime checks used guest upgrades,
 an isolated first-run settings directory, and updates to an existing physical
 installation.
+
+A shell regression check confirms that a target chroot never contacts a live
+NetworkManager daemon, even when systemctl returns success for an ignored check.
