@@ -18,6 +18,8 @@ validation of this new stage.
 - XFCE with LightDM graphical autologin as `hamclock`.
 - Always-on desktop: automatic sleep, screen blanking and locking disabled on AC
   and battery; see [existing-install update and validation](docs/always-on.md).
+- Automatic display fitting for one active X11 output, preserving aspect ratio
+  and the current panel mode; see [display fitting](docs/display.md).
 - Checksum-pinned, prebuilt static HamClock 4.27 X11 binary (800×480), started fullscreen by a user
   service at XFCE login, with restart on failure. Callsign/location setup remains
   interactive on first launch.
@@ -106,7 +108,7 @@ Validated locally: preseed parser (`debconf-set-selections --checkonly`), shell
 syntax, embedded script equality, disk consent and matching partition/bootloader destinations,
 hostname generation/persistence/corrupt-state rejection, preserved hosts entries,
 and target configuration using mocked system commands. Python sources compile.
-The base profile passed GitHub CI. Eighteen local tests and ShellCheck cover the
+The base profile passed GitHub CI. Twenty-one local tests and ShellCheck cover the
 extended profile, including first-session startup, compiled elapsed-clock behavior,
 installer-media APT cleanup, Wi-Fi handoff/credential preservation and failing-stage status/logs. The USB builder regression
 test covers read-only extracted menu files. A real BIOS VM installation also passed

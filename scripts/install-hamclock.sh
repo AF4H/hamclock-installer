@@ -71,6 +71,7 @@ cat > /usr/local/bin/hamclock-kiosk <<'KIOSK'
 set -eu
 # Settings are passed as separate, fixed arguments, never evaluated as shell code.
 xset s off || true
+[ ! -x /usr/local/bin/hamclock-display ] || /usr/local/bin/hamclock-display || true
 xset -dpms || true
 exec /usr/local/bin/hamclock -b hamclock.com:80 -f on -d "$HOME/.hamclock"
 KIOSK

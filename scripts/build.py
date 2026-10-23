@@ -8,6 +8,7 @@ STAGES = [
     ('configure', 'configure-target.sh'),
     ('wifi', 'install-wifi.sh'),  # Repair installer-media APT entries before downloads.
     ('install', 'install-hamclock.sh'),
+    ('display', 'configure-display.sh'),
     ('desktop', 'configure-desktop.sh'),
     ('boot', 'configure-boot.sh'),
     ('mdns', 'install-mdns.sh'),
